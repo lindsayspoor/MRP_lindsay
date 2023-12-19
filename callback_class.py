@@ -1,5 +1,9 @@
 
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.results_plotter import load_results, ts2xy
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
     """
