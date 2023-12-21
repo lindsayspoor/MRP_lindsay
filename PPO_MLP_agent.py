@@ -98,7 +98,7 @@ class PPO_agent:
 
     def load_model(self, load_model_path):
         print("loading the model...")
-        #self.model=PPO.load(f"trained_models/ppo_{load_model_path}")
+
         if self.initialisation_settings['mask_actions']:
             self.model=MaskablePPO.load(f"trained_models/ppo_{load_model_path}")
         else:
@@ -126,7 +126,7 @@ class PPO_agent:
         
 
         for k in tqdm(range(number_evaluations)):
-            #print("new evaluation")
+
             obs, info = self.env.reset()
             initial_flips = AgentPPO.env.initial_qubits_flips
 
@@ -144,9 +144,7 @@ class PPO_agent:
             if MWPM_check==False:
                 logical_errors_MWPM+=1
                 results[k,1]=0 #0 for fail
-            #self.env.render()
-            #if render:
-                #self.env.render()
+
             for i in range(max_moves):
                 if evaluation_settings['mask_actions']:
                     action_masks=get_action_masks(self.env)
@@ -155,7 +153,7 @@ class PPO_agent:
 
                 else:
                     action, _state = self.model.predict(obs)
-                obs, reward, done, truncated, info = self.env.step(action)#, without_illegal_actions=True)
+                obs, reward, done, truncated, info = self.env.step(action)
                 actions[k,i,0]=action
                 moves+=1
                 if render:
@@ -166,19 +164,14 @@ class PPO_agent:
                             if results[k,0]==0 and results[k,1]==1:
                                 
                                 print(info['message'])
-                                #print(f"{action_masks=}")
-                                prob_dist = ((self.model.policy.get_distribution(self.model.policy.obs_to_tensor(obs0)[0]).distribution).probs).detach().numpy()
-                                #print(f"{prob_dist=}")
-                                #print(f"{np.max(prob_dist)=}")
-                                #print(f"{np.argwhere(prob_dist==np.max(prob_dist))=}")
                                 render_evaluation(obs0_k,evaluation_settings, actions[k,:,:], initial_flips)
+
                         logical_errors+=1
                         results[k,0]=0 #0 for fail
                     if info['message'] == 'success':
                         success+=1
                         results[k,0]=1 #1 for success
-                        #self.env.render()
-                        #self.env.reset()
+
                     break
 
 
@@ -236,19 +229,19 @@ class PPO_agent:
 
         if save_files:
             if fixed:
-                np.savetxt(f"Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-                np.savetxt(f"Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
-                np.savetxt(f"Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
-                np.savetxt(f"Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
             else:
-                np.savetxt(f"Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-                np.savetxt(f"Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
-                np.savetxt(f"Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
-                np.savetxt(f"Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
         return success_rates, success_rates_MWPM,observations, results, actions
     
@@ -286,19 +279,19 @@ class PPO_agent:
 
         if save_files:
             if fixed:
-                np.savetxt(f"Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-                np.savetxt(f"Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
-                np.savetxt(f"Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
-                np.savetxt(f"Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
             else:
-                np.savetxt(f"Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-                np.savetxt(f"Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
-                np.savetxt(f"Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
-                np.savetxt(f"Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-                np.savetxt(f"Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
+                np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/actions_agent_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
         return success_rates, success_rates_MWPM,observations, results, actions
 
@@ -307,7 +300,7 @@ class PPO_agent:
 
 
 #SETTINGS FOR RUNNING THIS SCRIPT
-train=False
+train=True
 curriculum=False #if set to True the agent will train on N_curriculum or error_rate_curriculum examples, using the training experience from 
 benchmark_MWPM=False
 save_files=True#
@@ -317,7 +310,7 @@ max_moves=200
 evaluate=True
 check_fails=False
 
-board_size=5
+board_size=3
 error_rate=0.01
 ent_coef=0.05
 clip_range=0.1
@@ -437,8 +430,7 @@ for curriculum_val in curriculums:
         print(f"{loaded_model_settings['N']=}")
         AgentPPO.load_model(load_model_path=load_model_path)
         
-    initialisation_settings['total_timesteps']=6000000
-    loaded_model_settings['total_timesteps']=6000000
+
     if curriculum:
         if fixed:
         
