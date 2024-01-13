@@ -31,7 +31,7 @@ def moving_average(values, window):
     :return: (numpy array)
     """
     weights = np.repeat(1.0, window) / window
-    print(values)
+    #print(values)
     return np.convolve(values, weights, "valid")
 
 

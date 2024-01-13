@@ -105,10 +105,7 @@ class ToricGameEnv(gym.Env):
         self.logical_error=self.check_logical_error()
         self.done=self.state.has_no_syndromes()
 
-        print(f"{self.logical_error}")
-        print(f"{self.done=}")
 
-        self.render()
         return self.state.encode(self.channels, self.memory)
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
@@ -182,11 +179,14 @@ class ToricGameEnv(gym.Env):
 
         if self.done:
             if self.logical_error:
+                #print("logical error")
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
+                #print("success")
                 return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
 
+   
         self.qubits_flips[0].append(location)
    
         self.state.act(self.state.qubit_pos[location], self.pauli_opt)
@@ -195,19 +195,24 @@ class ToricGameEnv(gym.Env):
         if self.state.has_no_syndromes()==False:
             self.done = False
             self.logical_error = self.check_logical_error()
+
             if self.logical_error:
                 self.done=True
+                #print("logical error")
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
+                #print("continue")
                 return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
 
 
         self.done=True
         self.logical_error = self.check_logical_error()
-        if self.logical_error:
 
+        if self.logical_error:
+            #print("logical error")
             return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
         else:
+            #print("success")
             return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
 
@@ -221,13 +226,11 @@ class ToricGameEnv(gym.Env):
 
         for q in self.state.qubit_pos:    
             if np.random.rand() < self.error_rate:
-                
                 self.initial_qubits_flips[0].append( q )
-
                 self.state.act(q, self.pauli_opt)
 
 
-                
+       
         # Now unflip the qubits, they're a secret
         self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
@@ -235,37 +238,47 @@ class ToricGameEnv(gym.Env):
 
 
 
-    def find_string(self,q,l_list):
+    def find_string(self,q,l_list, checked_plaqs):
+        '''Finds the error strings on the board and checks whether they form closed loops or not.
+        returns: 
+        - l_list: list containing the qubits composing each error string
+        - closed: boolean, True of the loop from l_list forms a closed loop
+        '''
 
+        closed = False
         coord = self.state.qubit_pos[q]
 
         neighboring_plaqs = self.state.adjacent_plaquettes(coord)
-        print(f"{neighboring_plaqs=}")
+
         l_list.append(q)
-        print(f"{self.state.syndrome_pos=}")
+
         for i in neighboring_plaqs:
             if i in self.state.syndrome_pos:
-                return l_list, False
+                return l_list, closed, checked_plaqs
+        
         
         next_plaq = neighboring_plaqs[0]
+
+        if next_plaq in checked_plaqs:
+            return l_list, closed, checked_plaqs #if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
+        checked_plaqs.append(next_plaq)
+        
         print(f"{next_plaq=}")
         neighboring_qubits = self.find_neighboring_qubits(next_plaq)
         neighboring_qubits.remove(q)
         print(f"{neighboring_qubits=}")
 
-
         for i in neighboring_qubits:
             if i ==l_list[0]:
-                print(f"{i=}")
-                print("closed loop")
-                print(f"{l_list=}")
-                return l_list, True #closed loop
-            if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
-                print(f"qubit {i} is a flipped one")
-                l_list, closed = self.find_string(i, l_list) #check again for next flipped qubit if it ends at a syndrome point or not.
-                #l_list.append(l_new)
-                return l_list, closed #if qubit not flipped it will go on to the next qubit adjacent to the plaquette until it finds one that is flipped
+                print(f"{l_list=}, {i=}, closed=True")
+                closed = True #closed loop
+                return l_list, closed, checked_plaqs #closed loop
+                
             
+            if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
+                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) #check again for next flipped qubit if it ends at a syndrome point or not.
+
+        return l_list, closed, checked_plaqs 
 
     def number_of_times_boundary(self, l_list):
         '''counts how many times an error string crosses the a boundary.'''
@@ -289,29 +302,28 @@ class ToricGameEnv(gym.Env):
         return: False -> no logical error, True -> logical error.
         '''
 
+
         Nx = 0 
         Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
-        
+        print(f"{self.state.hidden_state_qubit_values[0]=}")
         for q in self.state.boundary_qubits:
-            print(f"{q=}")
             if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
-                print(f"qubit is flipped")
                 l_list = []
-                l_list, closed = self.find_string(q, l_list)
+                checked_plaqs=[]
+                l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
                 print(f"{l_list=}")
                 print(f"{closed=}")
+
                 if closed:
+
                     nx,ny = self.number_of_times_boundary(l_list)
-                    print(f"{nx=}")
-                    print(f"{ny=}")
                     Nx+=nx
                     Ny+=ny
-        print(f"{Nx=}")  
-        print(f"{Ny=}")  
+        print(f"{Nx=}")
+        print(f"{Ny=}")
         if (Nx%2==1) or (Ny%2==1):
-            print("logical error")
             return True #logical error, non-trivial loop
-        print("no logical error")
+
         return False #no logical error
         
 
@@ -328,13 +340,9 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
             but report only the syndrome
         '''
 
-        #for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
-        for q in [3]: 
-
+        for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
             q = self.state.qubit_pos[q]
-
-            self.initial_qubits_flips[0].append( q )
-
+            self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
 
         # Now unflip the qubits, they're a secret
@@ -406,9 +414,9 @@ class Board(object):
 
 
     def reset(self):
-        #self.board_state = np.zeros( (2, 2*self.size, 2*self.size) )
         
         self.qubit_values = np.zeros((2, 2*self.size*self.size))
+        self.hidden_state_qubit_values = np.zeros((2, 2*self.size*self.size))  #make hidden state that contains the information about the initially flipped qubits (not visible to the agent)
         self.op_values = np.zeros((2, self.size*self.size))
 
         self.syndrome_pos = [] # Location of syndromes
@@ -437,9 +445,10 @@ class Board(object):
 
         # Flip it!
         self.qubit_values[0][qubit_index] = (self.qubit_values[0][qubit_index] + 1) % 2
+        self.hidden_state_qubit_values[0][qubit_index] = (self.hidden_state_qubit_values[0][qubit_index] + 1) % 2
+        #print(f"{self.qubit_values[0]=}")
 
-        #make copy hidden state that contains the information about the initially flipped qubits (not visible to the agent)
-        self.hidden_state_qubit_values = self.qubit_values.copy()
+
 
         plaqs = self.adjacent_plaquettes(coord)
 
@@ -466,7 +475,7 @@ class Board(object):
     def has_no_syndromes(self):
 
         # Are all syndromes removed?
-        return len(self.syndrome_pos) == 0 #false if it has syndromes, true if there are no syndromes
+        return len(self.syndrome_pos) == 0 #False if it has syndromes, True if there are no syndromes
 
 
 
