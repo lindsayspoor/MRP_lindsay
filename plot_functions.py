@@ -36,7 +36,9 @@ def moving_average(values, window):
 
 
 
-def plot_log_results(log_folder, save_model_path, title="Learning Curve"):
+
+
+def plot_log_results(log_folder, n_steps, save_model_path, title="Average training reward"):
     """
     plot the results
 
@@ -44,20 +46,20 @@ def plot_log_results(log_folder, save_model_path, title="Learning Curve"):
     :param title: (str) the title of the task to plot
     """
     x, y = ts2xy(load_results(log_folder), "timesteps")
-    y = moving_average(y, window=50)
+
+    y = moving_average(y, window=50) #geen  oving average maar averagen over n_steps
     # Truncate x
     x = x[len(x) - len(y) :]
 
     fig = plt.figure(title)
-    plt.plot(x, y)
+    plt.plot(x, y, color = 'blue', linewidth=0.9)
     plt.yscale("linear")
-    plt.xlabel("Number of Timesteps")
-    plt.ylabel("Rewards")
-    plt.title(title + " Smoothed")
+    plt.xlabel("Number of training timesteps")
+    plt.ylabel("Reward")
+    plt.grid()
+    #plt.title(title + " Smoothed")
     plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/learning_curve_{save_model_path}.pdf')
-    #plt.yscale("log")
-    #plt.savefig(f'Figure_results/Results_reward_logs/learning_curve_log_{save_model_path}.pdf')
-    #plt.show()
+
 
 
 def render_evaluation(obs0_k,evaluation_settings, actions_k, initial_flips_k):

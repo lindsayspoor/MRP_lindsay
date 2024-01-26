@@ -179,10 +179,8 @@ class ToricGameEnv(gym.Env):
 
         if self.done:
             if self.logical_error:
-                #print("logical error")
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
-                #print("success")
                 return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
 
@@ -198,10 +196,8 @@ class ToricGameEnv(gym.Env):
 
             if self.logical_error:
                 self.done=True
-                #print("logical error")
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
-                #print("continue")
                 return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
 
 
@@ -209,10 +205,8 @@ class ToricGameEnv(gym.Env):
         self.logical_error = self.check_logical_error()
 
         if self.logical_error:
-            #print("logical error")
             return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
         else:
-            #print("success")
             return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
 
@@ -249,7 +243,6 @@ class ToricGameEnv(gym.Env):
         coord = self.state.qubit_pos[q]
 
         neighboring_plaqs = self.state.adjacent_plaquettes(coord)
-
         l_list.append(q)
 
         for i in neighboring_plaqs:
@@ -260,23 +253,30 @@ class ToricGameEnv(gym.Env):
         next_plaq = neighboring_plaqs[0]
 
         if next_plaq in checked_plaqs:
-            return l_list, closed, checked_plaqs #if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
-        checked_plaqs.append(next_plaq)
+            next_plaq=neighboring_plaqs[1]
+
+            if next_plaq in checked_plaqs:
+                return l_list, closed, checked_plaqs #if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
         
-        print(f"{next_plaq=}")
+
+        checked_plaqs.append(next_plaq)
+
+
         neighboring_qubits = self.find_neighboring_qubits(next_plaq)
         neighboring_qubits.remove(q)
-        print(f"{neighboring_qubits=}")
+
 
         for i in neighboring_qubits:
             if i ==l_list[0]:
-                print(f"{l_list=}, {i=}, closed=True")
                 closed = True #closed loop
                 return l_list, closed, checked_plaqs #closed loop
                 
             
             if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
+
                 l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) #check again for next flipped qubit if it ends at a syndrome point or not.
+
+
 
         return l_list, closed, checked_plaqs 
 
@@ -290,11 +290,12 @@ class ToricGameEnv(gym.Env):
                 ny+=self.state.hidden_state_qubit_values[0][i]
             if i in self.state.bottom_boundary_qubits:
                 nx+=self.state.hidden_state_qubit_values[0][i]
-        
+
         return nx,ny
 
 
-
+    def flatten(self, xss):
+        return [x for xs in xss for x in xs]
     
     def check_logical_error(self):
         '''Checks if an error string has a closed loop and if so it checks if the loop is non-trivial, 
@@ -305,22 +306,25 @@ class ToricGameEnv(gym.Env):
 
         Nx = 0 
         Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
-        print(f"{self.state.hidden_state_qubit_values[0]=}")
+
+        l_list_global=[]
         for q in self.state.boundary_qubits:
+            flat_l_list_global = self.flatten(l_list_global)
+
+            if q in flat_l_list_global:
+                continue
+
             if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
                 l_list = []
                 checked_plaqs=[]
                 l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
-                print(f"{l_list=}")
-                print(f"{closed=}")
 
                 if closed:
-
+                    l_list_global.append(l_list)
                     nx,ny = self.number_of_times_boundary(l_list)
                     Nx+=nx
                     Ny+=ny
-        print(f"{Nx=}")
-        print(f"{Ny=}")
+
         if (Nx%2==1) or (Ny%2==1):
             return True #logical error, non-trivial loop
 
@@ -341,6 +345,7 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
         '''
 
         for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
+        #for q in [2,11,4,12,15]:
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -446,7 +451,7 @@ class Board(object):
         # Flip it!
         self.qubit_values[0][qubit_index] = (self.qubit_values[0][qubit_index] + 1) % 2
         self.hidden_state_qubit_values[0][qubit_index] = (self.hidden_state_qubit_values[0][qubit_index] + 1) % 2
-        #print(f"{self.qubit_values[0]=}")
+
 
 
 

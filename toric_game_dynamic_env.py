@@ -6,11 +6,7 @@ import gymnasium as gym
 #import gym
 from gymnasium.utils import seeding
 from gymnasium import spaces
-import gymnasium
-import sys, os
 import matplotlib.pyplot as plt
-from scipy.spatial import distance_matrix
-import collections
 
 from config import ErrorModel
 
@@ -34,21 +30,30 @@ class ToricGameDynamicEnv(gym.Env):
         self.channels = [0]
         self.memory = False
         self.error_rate = settings['error_rate']
-        self.mask_actions=settings['mask_actions']
-        self.N = settings['N']
         self.iteration_step = settings['iteration_step']
+        #self.logical_error_reward=settings['l_reward']
+        #self.continue_reward=settings['c_reward']
+        #self.success_reward=settings['s_reward']
+        self.mask_actions=settings['mask_actions']
+        #self.illegal_action_reward = settings['i_reward']
+        #self.lambda_value = settings['lambda']
+        self.N = settings['N']
         self.new_N=settings['new_N']
+        self.pauli_opt=0
 
         # Keep track of the moves
         self.qubits_flips = [[],[]]
         self.initial_qubits_flips = [[],[]]
 
         self.counter=0 #counts the amount of steps taken by the agent
+
         # Empty State
         self.state = Board(self.board_size)
         self.done = None
+        self.logical_error = None
 
-        self.observation_space = spaces.MultiBinary(self.board_size*self.board_size) #3x3 plaquettes on which we can view syndromes
+
+        self.observation_space = spaces.MultiBinary(self.board_size*self.board_size) #3x3 plaquettes on which we can view syndromes #extra lagen toevoegen en dan met np.roll updaten
         self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)+1) #last action = 'do nothing'
 
 
@@ -58,31 +63,34 @@ class ToricGameDynamicEnv(gym.Env):
         seed2 = seeding.hash_seed(seed1 + 1) % 2**32
         return [seed1, seed2]
 
+    def find_neighboring_qubits(self, plaq):
+        '''Find qubits adjacent to given plaquette.'''
+
+        neighboring_qubits=[]
+        a,b = plaq[0], plaq[1]
+        neighboring_qubit_pos = [[(a-1)%(2*self.state.size),b%(2*self.state.size)],[a%(2*self.state.size),(b-1)%(2*self.state.size)],[a%(2*self.state.size),(b+1)%(2*self.state.size)],[(a+1)%(2*self.state.size),b%(2*self.state.size)]]
+        for i in neighboring_qubit_pos:
+            neighboring_qubits.append(self.state.qubit_pos.index(i))
+
+        return neighboring_qubits
 
     def action_masks(self):
 
-        self.mask_qubits=[]
         self.action_masks_list=np.zeros((len(self.state.qubit_pos)+1))
         self.action_masks_list[:]=False
 
-        if self.state.do_nothing()==True: #if there are no syndrome points on the board, the agent can only "do nothing"
+        if self.state.has_no_syndromes()==True: #if there are no syndrome points on the board, the agent can only "do nothing"
             qubit_number = len(self.state.qubit_pos)
             self.action_masks_list[qubit_number]=True
 
         else:
             for i in self.state.syndrome_pos:
-                a,b = i[0],i[1]
-                mask_coords = [[(a-1)%(2*self.state.size),b%(2*self.state.size)],[a%(2*self.state.size),(b-1)%(2*self.state.size)],[a%(2*self.state.size),(b+1)%(2*self.state.size)],[(a+1)%(2*self.state.size),b%(2*self.state.size)]]
-                for j in mask_coords:
-                    qubit_number = self.state.qubit_pos.index(j)
-                    self.mask_qubits.append(qubit_number)
-                    self.action_masks_list[qubit_number]=True
+                mask_pos = self.find_neighboring_qubits(i)
+                self.action_masks_list[mask_pos]=True
                 
 
 
-
         self.action_masks_list=list(self.action_masks_list)
-
 
         return self.action_masks_list
 
@@ -90,43 +98,51 @@ class ToricGameDynamicEnv(gym.Env):
 
 
 
+
     def generate_errors(self):
-        # Reset the board state
+
         self.state.reset()
 
         # Let the opponent do it's initial evil
         self.qubits_flips = [[],[]]
         self.initial_qubits_flips = [[],[]]
-        self._set_initial_errors(self.N)
-        self.action_masks_list=self.action_masks()
 
-        self.done = self.state.has_logical_error(self.initial_qubits_flips)
-        self.reward=1
+        self._set_initial_errors(self.N)
+        self.action_mask_list=self.action_masks()
+
+
+        self.done=self.check_logical_error()
+        #print(f"{self.done=}")
+        #self.render()
 
 
         return self.state.encode(self.channels, self.memory)
-
-    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
-         super().reset(seed=seed, options=options)
-
-         self.counter=0 #sets the amount of steps back to 0 when a new game starts
-         initial_observation = self.generate_errors()
-         return initial_observation, {'state': self.state, 'message':"reset"}
-
 
 
     def generate_new_errors(self):
+        #print("generating new error")
 
-
-        self._set_initial_errors(self.new_N)
+        self._set_new_errors(self.new_N)
 
         self.action_masks_list=self.action_masks()
+        #print(f"{self.action_mask_list=}")
 
-        self.done = self.state.has_logical_error(self.initial_qubits_flips)
-
+        self.done=self.check_logical_error()
+        #print(f"{self.done=}")
+        #self.render()
 
         return self.state.encode(self.channels, self.memory)
 
+
+
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
+        super().reset(seed=seed, options=options)
+
+
+        self.counter=0
+        initial_observation = self.generate_errors()
+
+        return initial_observation, {'state': self.state, 'message':"reset"}
 
 
     def close(self):
@@ -159,11 +175,14 @@ class ToricGameDynamicEnv(gym.Env):
         for i, p in enumerate(self.state.qubit_pos):
             pos=(a*p[0], a*p[1])
             fc='darkgrey'
-            if self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 0:
+            #if self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 0:
+            if self.state.hidden_state_qubit_values[0][i] == 1 and self.state.hidden_state_qubit_values[1][i] == 0:
                 fc='darkblue'
-            elif self.state.qubit_values[0][i] == 0 and self.state.qubit_values[1][i] == 1:
+            #elif self.state.qubit_values[0][i] == 0 and self.state.qubit_values[1][i] == 1:
+            elif self.state.hidden_state_qubit_values[0][i] == 0 and self.state.hidden_state_qubit_values[1][i] == 1:
                 fc='darkred'
-            elif self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 1:
+            #elif self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 1:
+            elif self.state.hidden_state_qubit_values[0][i] == 1 and self.state.hidden_state_qubit_values[1][i] == 1:
                 fc='darkmagenta'
             circle = plt.Circle( pos , radius=a*0.25, ec='k', fc=fc)
             ax.add_patch(circle)
@@ -177,7 +196,8 @@ class ToricGameDynamicEnv(gym.Env):
         plt.axis('off')
         plt.show()
 
-    def step(self, location,  without_illegal_actions=True):
+    def step(self, location):
+
         '''
         Args:
             location: coord of the qubit to flip
@@ -188,56 +208,67 @@ class ToricGameDynamicEnv(gym.Env):
             done: boolean,
             info: state dict
         '''
+        #print(f"{self.counter=}")
 
         if self.counter==300:
-            print("max steps reached, terminated.")
+            #print("max steps reached, terminated.")
             self.done=True
-            return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"max steps reached, terminated."}
+            return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"max steps reached, terminated."}
 
 
         if (self.counter > 0) and (self.counter % self.iteration_step == 0):
 
             self.generate_new_errors()
 
-        # If already terminal, then don't do anything, count as win
-        if self.done:
-
-            return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"game over!"}
-
-        # Check if we flipped twice the same qubit 
-        pauli_opt=0
-        pauli_X_flip=True
-        pauli_Z_flip=False
-        #self.render()
-
-        self.counter+=1
+            if self.done:
+                #print(f"1,logical error")
+                #self.counter=0
+                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
+            #else:
+                #self.counter=0
+                #return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
 
 
-        if  location == len(self.state.qubit_pos): #if the last action in the action space is chosen, the agent needs to do nothing in this case.
-            if not self.state.has_logical_error(self.initial_qubits_flips):
-                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
-            else:
-                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"game over!"}
         
 
-                
+        #self.done = self.check_logical_error()
+        #print(f"flipping qubit at {location}")
 
+        if location == len(self.state.qubit_pos): #if the last action in the action space is chosen, the agent needs to do nothing in this case.
+            #print("do nothing")
+            if self.done==False:
+                #print(f"2,continue")
+                #set the qubit values on the board back to zero
+                self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
+                self.state.hidden_state_qubit_values = np.zeros((2,2*self.board_size*self.board_size))
+                self.counter+=1
+                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
+            
+            else:
+                #print("2,logical error")
+                self.counter+=1
+                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
+   
         else:
-            if pauli_X_flip:
-                self.qubits_flips[0].append(location) 
+            self.qubits_flips[0].append(location)
+            
+            self.state.act(self.state.qubit_pos[location], self.pauli_opt)
 
-            if pauli_Z_flip:
-                self.qubits_flips[1].append(location)
+            #self.render()
 
-            self.state.act(self.state.qubit_pos[location], pauli_opt)
 
-            if not self.state.has_logical_error(self.initial_qubits_flips):
-
-                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
+            self.done = self.check_logical_error()
+            #print(f"{self.done=}")
+            if self.done:
+                #print(f"3,logical_error")
+                self.counter+=1
+                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
             else:
+                #print(f"3,continue")
+                self.counter+=1
+                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
 
-                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"game over!"}
-        
+
 
 
     def _set_initial_errors(self):
@@ -246,28 +277,139 @@ class ToricGameDynamicEnv(gym.Env):
         '''
         # Probabilitic mode
         # Pick random sites according to error rate
+
         for q in self.state.qubit_pos:    
             if np.random.rand() < self.error_rate:
-
-                if self.error_model == ErrorModel["UNCORRELATED"]:
-                    pauli_opt = 0
-                elif self.error_model == ErrorModel["DEPOLARIZING"]:
-                    pauli_opt = np.random.randint(0,3)
-
-                pauli_X_flip = (pauli_opt==0 or pauli_opt==2)
-                pauli_Z_flip = (pauli_opt==1 or pauli_opt==2)
+                self.initial_qubits_flips[0].append( q )
+                self.state.act(q, self.pauli_opt)
 
 
-                if pauli_X_flip:
-                    self.initial_qubits_flips[0].append( q )
-                if pauli_Z_flip:
-                    self.initial_qubits_flips[1].append( q )
-
-                self.state.act(q, pauli_opt)
-
-
+       
         # Now unflip the qubits, they're a secret
         self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
+
+    def _set_new_errors(self):
+        ''' Set random initial errors with an %error_rate rate
+            but report only the syndrome
+        '''
+        # Probabilitic mode
+        # Pick random sites according to error rate
+
+        for q in self.state.qubit_pos:    
+            if np.random.rand() < self.error_rate:
+                self.initial_qubits_flips[0].append( q )
+                self.state.act(q, self.pauli_opt)
+
+
+       
+        # Now unflip the qubits, they're a secret
+        #self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
+
+
+
+
+
+    def find_string(self,q,l_list, checked_plaqs):
+        '''Finds the error strings on the board and checks whether they form closed loops or not.
+        returns: 
+        - l_list: list containing the qubits composing each error string
+        - closed: boolean, True of the loop from l_list forms a closed loop
+        '''
+
+        closed = False
+        coord = self.state.qubit_pos[q]
+
+        neighboring_plaqs = self.state.adjacent_plaquettes(coord)
+        l_list.append(q)
+
+        for i in neighboring_plaqs:
+            if i in self.state.syndrome_pos:
+                return l_list, closed, checked_plaqs
+        
+        
+        next_plaq = neighboring_plaqs[0]
+
+        if next_plaq in checked_plaqs:
+            next_plaq=neighboring_plaqs[1]
+
+            if next_plaq in checked_plaqs:
+                return l_list, closed, checked_plaqs #if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
+        
+
+        checked_plaqs.append(next_plaq)
+
+
+        neighboring_qubits = self.find_neighboring_qubits(next_plaq)
+        neighboring_qubits.remove(q)
+
+
+        for i in neighboring_qubits:
+            if i ==l_list[0]:
+                closed = True #closed loop
+                return l_list, closed, checked_plaqs #closed loop
+                
+            
+            if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
+
+                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) #check again for next flipped qubit if it ends at a syndrome point or not.
+
+
+
+        return l_list, closed, checked_plaqs 
+
+    def number_of_times_boundary(self, l_list):
+        '''counts how many times an error string crosses the a boundary.'''
+
+        nx = 0
+        ny = 0
+        for i in l_list:
+            if i in self.state.left_boundary_qubits:
+                ny+=self.state.hidden_state_qubit_values[0][i]
+            if i in self.state.bottom_boundary_qubits:
+                nx+=self.state.hidden_state_qubit_values[0][i]
+
+        return nx,ny
+
+
+    def flatten(self, xss):
+        return [x for xs in xss for x in xs]
+    
+    def check_logical_error(self):
+        '''Checks if an error string has a closed loop and if so it checks if the loop is non-trivial, 
+        resulting in a logical error.
+        return: False -> no logical error, True -> logical error.
+        '''
+
+
+        Nx = 0 
+        Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
+
+        l_list_global=[]
+        for q in self.state.boundary_qubits:
+            flat_l_list_global = self.flatten(l_list_global)
+
+            if q in flat_l_list_global:
+                continue
+
+            if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
+                l_list = []
+                checked_plaqs=[]
+                l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
+
+                if closed:
+                    l_list_global.append(l_list)
+                    nx,ny = self.number_of_times_boundary(l_list)
+                    Nx+=nx
+                    Ny+=ny
+
+        if (Nx%2==1) or (Ny%2==1):
+            return True #logical error, non-trivial loop
+
+        return False #no logical error
+        
+
+            
+
 
 class ToricGameDynamicEnvFixedErrs(ToricGameDynamicEnv):
     def __init__(self, settings):
@@ -278,54 +420,28 @@ class ToricGameDynamicEnvFixedErrs(ToricGameDynamicEnv):
         ''' Set random initial errors with an %error_rate rate
             but report only the syndrome
         '''
-        # Probabilistic mode
-        '''
 
-        print(f"{self.state.qubit_values=}")
-        q_options = []
-
-        k=0
-        for i in range(50):
-            print("new error selection")
-            if k==N:
-                break
-
-            qubit = np.random.choice(len(self.state.qubit_pos),1, replace=False)[0]
-            qubit = self.state.qubit_pos[qubit]
-            print(f"{qubit=}")
-            print(f"{self.initial_qubits_flips[0]=}")
-            print(f"{self.qubits_flips[0]=}")
-            if qubit in self.initial_qubits_flips[0]: #dit klopt niet, dit moeten de huidige qubits op het board zijn die geflipt zijn
-                print("continue qubit selection")
-                continue
-            else:
-                q_options.append(qubit)
-            k+=1
-
-        '''
-        for q in np.random.choice(len(self.state.qubit_pos), N, replace=False): 
-        #for q in q_options:
-
+        for q in np.random.choice(len(self.state.qubit_pos), N, replace=False):
+            #print(f"setting initial error at {q}")
             q = self.state.qubit_pos[q]
+            self.initial_qubits_flips[0].append(q)
+            self.state.act(q, self.pauli_opt)
 
-            if self.error_model == ErrorModel["UNCORRELATED"]:
-                pauli_opt = 0
-            elif self.error_model == ErrorModel["DEPOLARIZING"]:
-                pauli_opt = np.random.randint(0,3)
-
-            pauli_X_flip = (pauli_opt==0 or pauli_opt==2)
-            pauli_Z_flip = (pauli_opt==1 or pauli_opt==2)
-
-
-            if pauli_X_flip:
-                self.initial_qubits_flips[0].append( q )
-            if pauli_Z_flip:
-                self.initial_qubits_flips[1].append( q )
-
-            self.state.act(q, pauli_opt)
-            #break
         # Now unflip the qubits, they're a secret
+        self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
+    def _set_new_errors(self, N):
+        ''' Set random initial errors with an %error_rate rate
+            but report only the syndrome
+        '''
+
+        for q in np.random.choice(len(self.state.qubit_pos), N, replace=False):
+            #print(f"adding new error at {q}")
+            q = self.state.qubit_pos[q]
+            self.initial_qubits_flips[0].append(q)
+            self.state.act(q, self.pauli_opt)
+
+        # Now unflip the qubits, they're a secret
         self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
 
@@ -361,37 +477,58 @@ class Board(object):
 
         return qubit_pos, plaquet_pos, star_pos
 
+
     def __init__(self, board_size):
         self.size = board_size
 
         # Real-space locations
         self.qubit_pos, self.plaquet_pos, self.star_pos  = self.component_positions(self.size)
 
-        # Mapping between 1-index and 2D position
-        '''
-        self.qubit_dict, self.star_dict, self.plaquet_dict = {},{},{}
-        for i in range(2*self.size*self.size):
-            self.qubit_dict[self.qubit_pos[i]] = i
-        for i in range(self.size*self.size):
-            self.star_dict[i] = self.star_pos[i]
-            self.plaquet_dict[i] = self.plaquet_pos[i]
-        '''
-
         # Define here the logical error for efficiency
-        self.z1pos = [[0,x] for x in range(1, 2*self.size, 2)]
-        self.z2pos = [[y,0] for y in range(1, 2*self.size, 2)]
-        self.x1pos = [[1,x] for x in range(0, 2*self.size, 2)]
-        self.x2pos = [[y,1] for y in range(0, 2*self.size, 2)]
+        self.left_boundary_positions, self.bottom_boundary_positions, self.left_boundary_qubits, self.bottom_boundary_qubits, self.boundary_qubits = self.define_boundary(self.qubit_pos)
 
         self.reset()
 
+    def define_boundary(self, qubit_pos):
+
+        left_boundary_positions = [[0,x] for x in range(1, 2*self.size, 2)]        
+        bottom_boundary_positions = [[x,0] for x in range(1, 2*self.size, 2)]
+
+        boundary_qubits = []
+        left_boundary_qubits = []
+        bottom_boundary_qubits = []
+        for i in left_boundary_positions:
+            boundary_qubit = qubit_pos.index(i)
+            left_boundary_qubits.append(boundary_qubit)
+            boundary_qubits.append(boundary_qubit)
+        for i in bottom_boundary_positions:
+            boundary_qubit = qubit_pos.index(i)
+            bottom_boundary_qubits.append(boundary_qubit)
+            boundary_qubits.append(boundary_qubit)
+        
+        return left_boundary_positions, bottom_boundary_positions, left_boundary_qubits, bottom_boundary_qubits, boundary_qubits
+
+
     def reset(self):
-        #self.board_state = np.zeros( (2, 2*self.size, 2*self.size) )
         
         self.qubit_values = np.zeros((2, 2*self.size*self.size))
+        self.hidden_state_qubit_values = np.zeros((2, 2*self.size*self.size))  #make hidden state that contains the information about the initially flipped qubits (not visible to the agent)
         self.op_values = np.zeros((2, self.size*self.size))
 
         self.syndrome_pos = [] # Location of syndromes
+
+
+    def adjacent_plaquettes(self, coord):
+        '''Find plaquettes that the flipped qubit is a part of '''
+        plaqs = []
+        if coord[0] % 2 == 0:
+            plaqs += [ [ (coord[0] + 1) % (2*self.size), coord[1] ], [ (coord[0] - 1) % (2*self.size), coord[1] ] ]
+        else:
+            plaqs += [ [ coord[0], (coord[1] + 1) % (2*self.size) ], [ coord[0], (coord[1] - 1) % (2*self.size) ] ]
+        return plaqs
+
+
+
 
     def act(self, coord, operator):
         '''
@@ -399,39 +536,20 @@ class Board(object):
             coord: real-space location of the qubit to flip
         '''
 
-        pauli_X_flip = (operator==0 or operator==2)
-        pauli_Z_flip = (operator==1 or operator==2)
 
-
-
-        #qubit_index = self.qubit_pos.index(coord)
         qubit_index=self.qubit_pos.index(coord)
-        #coord = self.qubit_pos[coord]
 
         # Flip it!
-        if pauli_X_flip:
-            self.qubit_values[0][qubit_index] = (self.qubit_values[0][qubit_index] + 1) % 2
-        if pauli_Z_flip:
-            self.qubit_values[1][qubit_index] = (self.qubit_values[1][qubit_index] + 1) % 2
+        self.qubit_values[0][qubit_index] = (self.qubit_values[0][qubit_index] + 1) % 2
+        self.hidden_state_qubit_values[0][qubit_index] = (self.hidden_state_qubit_values[0][qubit_index] + 1) % 2
 
-        # Update the syndrome measurements
-        # Only need to incrementally change
-        # Find plaquettes that the flipped qubit is a part of
-        plaqs=[]
-        if pauli_X_flip:
-            if coord[0] % 2 == 0:
-                plaqs += [ [ (coord[0] + 1) % (2*self.size), coord[1] ], [ (coord[0] - 1) % (2*self.size), coord[1] ] ]
-            else:
-                plaqs += [ [ coord[0], (coord[1] + 1) % (2*self.size) ], [ coord[0], (coord[1] - 1) % (2*self.size) ] ]
 
-        if pauli_Z_flip:
-            if coord[0] % 2 == 0:
-                plaqs += [ [ coord[0], (coord[1] + 1) % (2*self.size) ], [ coord[0], (coord[1] - 1) % (2*self.size) ] ]
-            else:
-                plaqs += [ [ (coord[0] + 1) % (2*self.size), coord[1] ], [ (coord[0] - 1) % (2*self.size), coord[1] ] ]
 
+
+        plaqs = self.adjacent_plaquettes(coord)
 
         # Update syndrome positions
+        # TODO: Maybe update to boolean list?
         for plaq in plaqs:
             if plaq in self.syndrome_pos:
                 self.syndrome_pos.remove(plaq)
@@ -439,13 +557,10 @@ class Board(object):
                 self.syndrome_pos.append(plaq)
 
             # The plaquette or vertex operators are only 0 or 1
-            if plaq in self.star_pos:
-                op_index = self.star_pos.index(plaq)
-                channel = 1
-            elif plaq in self.plaquet_pos:
+            # TODO: This is always true?
+            if plaq in self.plaquet_pos:
                 op_index = self.plaquet_pos.index(plaq)
                 channel = 0
-
         
             self.op_values[channel][op_index] = (self.op_values[channel][op_index] + 1) % 2
 
@@ -453,58 +568,29 @@ class Board(object):
 
 
 
-    def do_nothing(self):
+    def has_no_syndromes(self):
 
         # Are all syndromes removed?
-        return len(self.syndrome_pos) == 0 #if True the agent should do nothing
-
-    def has_logical_error(self, initialmoves, debug=False):
-        if debug:
-            print("Initial errors:", [self.qubit_pos.index(q) for q in initialmoves])
+        return len(self.syndrome_pos) == 0 #False if it has syndromes, True if there are no syndromes
 
 
 
-        #check whether initial moves occur an even amount of times -> these should be removed as these result in an un-flipped qubit!
 
-        for i in initialmoves[0]:
-            counter = initialmoves[0].count(i)
-            if (counter%2==0):
-                initialmoves[0] = [j for j in initialmoves[0] if j != i]
 
+
+    def has_odd_number_of_errors_on_boundary(self):
 
         # Check for Z logical error
         zerrors = [0,0]
-        for pos in self.z1pos:
-            if pos in initialmoves[0]:
-                zerrors[0] += 1
+        for pos in self.left_boundary_positions:
             qubit_index = self.qubit_pos.index(pos)
-            zerrors[0] += self.qubit_values[0][ qubit_index ]
+            zerrors[0] += self.qubit_values[ qubit_index ]
 
-        for pos in self.z2pos:
-            if pos in initialmoves[0]:
-                zerrors[1] += 1
+        for pos in self.bottom_boundary_positions:
             qubit_index = self.qubit_pos.index(pos)
-            zerrors[1] += self.qubit_values[0][ qubit_index ]
+            zerrors[1] += self.qubit_values[ qubit_index ]
 
-        # Check for X logical error
-        xerrors = [0,0]
-        for pos in self.x1pos:
-            if pos in initialmoves[1]:
-                xerrors[0] += 1
-            qubit_index = self.qubit_pos.index(pos)
-            xerrors[0] += self.qubit_values[1][ qubit_index ]
-
-        for pos in self.x2pos:
-            if pos in initialmoves[1]:
-                xerrors[1] += 1
-            qubit_index = self.qubit_pos.index(pos)
-            xerrors[1] += self.qubit_values[1][ qubit_index ]
-
-        #print("Zerrors", zerrors)
-
-
-        if (zerrors[0]%2 == 1) or (zerrors[1]%2 == 1) or \
-            (xerrors[0]%2 == 1) or (xerrors[1]%2 == 1):
+        if (zerrors[0]%2 == 1) or (zerrors[1]%2 == 1):
             return True
 
         return False
@@ -549,6 +635,3 @@ class Board(object):
             image[pos[0], pos[1]] = str(int(self.qubit_values[channel,i]))+str(i) if number else str(int(self.qubit_values[channel, i]))
 
         return np.array(image)
-
-
-
