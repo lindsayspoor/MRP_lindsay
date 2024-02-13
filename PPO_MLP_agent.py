@@ -32,7 +32,7 @@ class PPO_agent:
         # Create log dir
         self.log=log
         if self.log:
-            self.log_dir = "log_dir"
+            self.log_dir = "log_dirs/log_dir_fixed_error_rate1"
             os.makedirs(self.log_dir, exist_ok=True)
 
 
@@ -77,7 +77,7 @@ class PPO_agent:
 
         # Logs will be saved in log_dir/monitor.csv
         if self.log:
-            self.env = Monitor(self.env, self.log_dir)
+            self.env = Monitor(self.env, self.log_dir, override_existing=False)
             # Create the callback: check every 1000 steps
             self.callback = SaveOnBestTrainingRewardCallback(check_freq=10000, log_dir=self.log_dir)
         
@@ -129,7 +129,8 @@ class PPO_agent:
 
             obs, info = self.env.reset()
             initial_flips = AgentPPO.env.initial_qubits_flips
-            #self.env.render()
+            if render:
+                self.env.render()
             obs0=obs.copy()
             observations[k,:]=obs
             obs0_k=obs0.reshape((evaluation_settings['board_size'],evaluation_settings['board_size']))
@@ -311,42 +312,47 @@ class PPO_agent:
 
 
 #SETTINGS FOR RUNNING THIS SCRIPT
-train=False
+train=True
 curriculum=False #if set to True the agent will train on N_curriculum or error_rate_curriculum examples, using the training experience from 
 benchmark_MWPM=False
 save_files=True#
 render=False
-number_evaluations=10000
+number_evaluations=1000
 max_moves=200
 evaluate=True
 check_fails=False
 
+error_rates_curriculum=list(np.linspace(0.01,0.15,6))
+
 board_size=5
-error_rate=0.1
+#error_rate=0.01
+error_rate=error_rates_curriculum[0]
 ent_coef=0.05
 clip_range=0.1
-N=5 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
+N=1 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
 logical_error_reward=5 #the reward the agent gets when it has removed all syndrome points, but the terminal board state claims that there is a logical error.
 success_reward=10 #the reward the agent gets when it has removed all syndrome points, and the terminal board state claims that there is no logical error, ans therefore the agent has successfully done its job.
 continue_reward=-1 #the reward the agent gets for each action that does not result in the terminal board state. If negative it gets penalized for each move it does, therefore giving the agent an incentive to remove syndromes in as less moves as possible.
 illegal_action_reward=-1 #the reward the agent gets when mask_actions is set to False and therefore the agent gets penalized by choosing an illegal action.
-total_timesteps=100000
+total_timesteps=1000000
 learning_rate= 0.001
 mask_actions=True #if set to True action masking is enabled, the illegal actions are masked out by the model. If set to False the agent gets a reward 'illegal_action_reward' when choosing an illegal action.
 log = True #if set to True the learning curve during training is registered and saved.
 lambda_value=1
-fixed=True #if set to True the agent is trained on training examples with a fixed amount of N initial errors. If set to False the agent is trained on training examples given an error rate error_rate for each qubit to have a chance to be flipped.
-evaluate_fixed=True #if set to True the trained model is evaluated on examples with a fixed amount of N initial errors. If set to False the trained model is evaluated on examples in which each qubit is flipped with a chance of error_rate.
+fixed=False #if set to True the agent is trained on training examples with a fixed amount of N initial errors. If set to False the agent is trained on training examples given an error rate error_rate for each qubit to have a chance to be flipped.
+evaluate_fixed=False #if set to True the trained model is evaluated on examples with a fixed amount of N initial errors. If set to False the trained model is evaluated on examples in which each qubit is flipped with a chance of error_rate.
 N_evaluates = [1,2,3,4,5] #the number of fixed initial flips N the agent is evaluated on if evaluate_fixed is set to True.
-#N_evaluates=[3]
+N_evaluates=[2]
 #error_rates_eval=list(np.linspace(0.01,0.15,10))
-error_rates_eval=list(np.linspace(0.01,0.15,4))
-#error_rates_eval=[0.1]
-N_curriculums=[1,2,3]
-N_curriculums=[5]
+error_rates_eval=list(np.linspace(0.01,0.15,10))
+#error_rates_eval=list(np.linspace(0.01,0.15,10))[0:4]
+#error_rates_eval=[0.01]
+N_curriculums=[3]
+#N_curriculums=[5]
 
-error_rates_curriculum=list(np.linspace(0.01,0.15,4))
-error_rates_curriculum=[0.1]
+
+#error_rates_curriculum=[0.12199999999999998,0.15]
+error_rates_curriculum=[error_rate]
 
 #SET SETTINGS TO INITIALISE AGENT ON
 initialisation_settings = {'board_size': board_size,

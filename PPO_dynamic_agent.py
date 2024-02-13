@@ -29,7 +29,7 @@ class PPO_agent:
         # Create log dir
         self.log=log
         if self.log:
-            self.log_dir = "log_dirs/log_dir_dynamic10"
+            self.log_dir = "log_dirs/log_dir_dynamic_random_2"
             os.makedirs(self.log_dir, exist_ok=True)
 
 
@@ -74,7 +74,8 @@ class PPO_agent:
 
         # Logs will be saved in log_dir/monitor.csv
         if self.log:
-            self.env = Monitor(self.env, self.log_dir)
+            self.env = Monitor(self.env, self.log_dir, override_existing=False)
+            #self.env = Monitor(self.env, self.log_dir)
             # Create the callback: check every 1000 steps
             self.callback = SaveOnBestTrainingRewardCallback(check_freq=10000, log_dir=self.log_dir)
         
@@ -90,7 +91,7 @@ class PPO_agent:
         else:
             self.model.learn(total_timesteps=self.initialisation_settings['total_timesteps'], progress_bar=True)
     
-        self.model.save(f"trained_models/dynamic_ppo10_{save_model_path}")
+        self.model.save(f"trained_models/dynamic_ppo_random_2_{save_model_path}")
         print("training done")
 
     def load_model(self, load_model_path):
@@ -247,7 +248,7 @@ curriculum=False #if set to True the agent will train on N_curriculum or error_r
 benchmark_MWPM=False
 save_files=True
 render=False
-number_evaluations=1000
+number_evaluations=20000
 max_moves=300
 evaluate=True
 check_fails=False
@@ -256,18 +257,18 @@ board_size=3
 error_rate=0.01
 ent_coef=0.05
 clip_range=0.1
-total_timesteps=5e6
+total_timesteps=1
 n_steps=2048
 mask_actions=True #if set to True action masking is enabled, the illegal actions are masked out by the model. If set to False the agent gets a reward 'illegal_action_reward' when choosing an illegal action.
 log = True #if set to True the learning curve during training is registered and saved.
 lambda_value=1
 iteration_step=3
-new_N=2
+new_N=1
 fixed=True #if set to True the agent is trained on training examples with a fixed amount of N initial errors. If set to False the agent is trained on training examples given an error rate error_rate for each qubit to have a chance to be flipped.
 evaluate_fixed=True #if set to True the trained model is evaluated on examples with a fixed amount of N initial errors. If set to False the trained model is evaluated on examples in which each qubit is flipped with a chance of error_rate.
 #N_evaluates = [1, 2, 3, 4, 5] #the number of fixed initial flips N the agent is evaluated on if evaluate_fixed is set to True
 N_evaluates=[1] 
-N=2 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
+N=1 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
 error_rates_eval=list(np.linspace(0.01,0.20,6))
 N_curriculums=[1]
 error_rates_curriculum=list(np.linspace(0.01,0.20,6))[1:]

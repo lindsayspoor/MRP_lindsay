@@ -2,23 +2,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3.common.results_plotter import load_results, ts2xy
+import pandas as pd
+import seaborn as sns
 
 def plot_benchmark_MWPM(success_rates_all, success_rates_all_MWPM,N_evaluates, error_rates_eval, board_size,path_plot,agent_value_N, agent_value_error_rate,evaluate_fixed):
-    plt.figure()
+    plt.figure(figsize=(6,4))
     #for j in range(success_rates.shape[0]):
     if evaluate_fixed:
-        plt.plot(N_evaluates, success_rates_all_MWPM[-1,:]*100, label=f'd={board_size} MWPM decoder', linestyle='-.', linewidth=0.5, color='black')
-        plt.scatter(N_evaluates, success_rates_all[-1,:]*100, label=f"d={board_size} PPO agent, N={agent_value_N}", marker="^", s=30)
-        plt.plot(N_evaluates, success_rates_all[-1,:]*100, linestyle='-.', linewidth=0.5)
+        plt.plot(N_evaluates, success_rates_all_MWPM[-1,:], label=f'd={board_size} MWPM decoder', linestyle='-.', linewidth=0.5, color='black')
+        plt.scatter(N_evaluates, success_rates_all[-1,:], label=f"d={board_size} PPO agent, N={agent_value_N}", marker="^", s=30)
+        plt.plot(N_evaluates, success_rates_all[-1,:], linestyle='-.', linewidth=0.5)
         plt.xlabel(r'N')
     else:
-        plt.plot(error_rates_eval, success_rates_all_MWPM[-1,:]*100, label=f'd={board_size} MWPM decoder', linestyle='-.', linewidth=0.5, color='black')
-        plt.scatter(error_rates_eval, success_rates_all[-1,:]*100, label=f"d={board_size} PPO agent, p_error={agent_value_error_rate}", marker="^", s=30)
-        plt.plot(error_rates_eval, success_rates_all[-1,:]*100, linestyle='-.', linewidth=0.5)
-        plt.xlabel(r'p')
-    plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'Correct[\%] $p_s$')
+        plt.plot(error_rates_eval, success_rates_all_MWPM[-1,:], label=f'd={board_size} MWPM', linestyle='-.',linewidth=0.9, color='black')
+        plt.scatter(error_rates_eval, success_rates_all[-1,:], label=f"d={board_size} PPO agent", marker="^", s=40, color = 'blue')
+        plt.plot(error_rates_eval, success_rates_all[-1,:], linestyle='-',linewidth=0.9, color='blue')
+        plt.xlabel(r'$p$')
+        plt.xlim((0,error_rates_eval[-1]+0.005))
+
+    #plt.title(r'Toric Code - PPO vs MWPM')
+    plt.ylabel(r'$p_s$')
     plt.legend()
+    plt.grid()
     plt.savefig(path_plot)
 
 
@@ -31,14 +36,28 @@ def moving_average(values, window):
     :return: (numpy array)
     """
     weights = np.repeat(1.0, window) / window
-    #print(values)
+
     return np.convolve(values, weights, "valid")
 
 
+def calculate_rolling(values, window):
+
+    means = []
+    errorbars = []
+    for i in range(0, values.shape[0]):
+        mean = np.mean(values[i:(i+window)])
+        errors = np.std(values[i:(i+window)])
+        means.append(mean)
+        errorbars.append(errors)
+
+
+    return np.array(means), np.array(errorbars)
+    
 
 
 
-def plot_log_results(log_folder, n_steps, save_model_path, title="Average training reward"):
+
+def plot_log_results(log_folder,  save_model_path, title="Average training reward"):
     """
     plot the results
 
@@ -48,8 +67,11 @@ def plot_log_results(log_folder, n_steps, save_model_path, title="Average traini
     x, y = ts2xy(load_results(log_folder), "timesteps")
 
     y = moving_average(y, window=50) #geen  oving average maar averagen over n_steps
+    #y = calculate_rolling(y, window=1000)
     # Truncate x
     x = x[len(x) - len(y) :]
+
+    np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/log_results/cnn_log_results_{save_model_path}.csv",(x,y) )
 
     fig = plt.figure(title)
     plt.plot(x, y, color = 'blue', linewidth=0.9)

@@ -213,7 +213,7 @@ class ToricGameDynamicEnv(gym.Env):
         if self.counter==300:
             #print("max steps reached, terminated.")
             self.done=True
-            return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"max steps reached, terminated."}
+            return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"max steps reached, terminated."}
 
 
         if (self.counter > 0) and (self.counter % self.iteration_step == 0):
@@ -223,7 +223,7 @@ class ToricGameDynamicEnv(gym.Env):
             if self.done:
                 #print(f"1,logical error")
                 #self.counter=0
-                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
             #else:
                 #self.counter=0
                 #return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
@@ -247,7 +247,7 @@ class ToricGameDynamicEnv(gym.Env):
             else:
                 #print("2,logical error")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
    
         else:
             self.qubits_flips[0].append(location)
@@ -262,11 +262,11 @@ class ToricGameDynamicEnv(gym.Env):
             if self.done:
                 #print(f"3,logical_error")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 1, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
             else:
                 #print(f"3,continue")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
+                return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
 
 
 

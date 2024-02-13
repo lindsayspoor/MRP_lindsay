@@ -100,10 +100,11 @@ class ToricGameEnv(gym.Env):
 
         self._set_initial_errors()
 
-
-
         self.logical_error=self.check_logical_error()
         self.done=self.state.has_no_syndromes()
+
+        if self.done == True:
+            self.generate_errors()
 
 
         return self.state.encode(self.channels, self.memory)
@@ -192,22 +193,22 @@ class ToricGameEnv(gym.Env):
 
         if self.state.has_no_syndromes()==False:
             self.done = False
+            #self.logical_error = self.check_logical_error()
+
+            #if self.logical_error:
+                #self.done=True
+                #return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
+            #else:
+            return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
+
+        else:
+            self.done=True
             self.logical_error = self.check_logical_error()
 
             if self.logical_error:
-                self.done=True
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
-                return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
-
-
-        self.done=True
-        self.logical_error = self.check_logical_error()
-
-        if self.logical_error:
-            return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
-        else:
-            return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
+                return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
 
 
@@ -345,7 +346,7 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
         '''
 
         for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
-        #for q in [2,11,4,12,15]:
+        #for q in [10,20,30]:
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
