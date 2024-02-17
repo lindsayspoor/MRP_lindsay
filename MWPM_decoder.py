@@ -1,5 +1,9 @@
 import numpy as np
 import networkx as nx
+from pymatching import Matching
+import math
+from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag
+
 
 
 
@@ -137,3 +141,57 @@ def decode_MWPM_method(qubit_pos,obs0_k, initial_flips, evaluation_settings):
 
 
     return check[0], MWPM_actions
+
+
+
+
+
+def decode_MWPM_pymatching(parity_check_matrix,qubit_pos,obs0, initial_flips, evaluation_settings):
+
+
+    matching  = Matching(parity_check_matrix)
+
+    correction = matching.decode(obs0)
+
+    grid_q = [[0 for col in range(evaluation_settings['board_size'])] for row in range(2 * evaluation_settings['board_size'])]
+    grid_q=np.array(grid_q)
+
+    #qubit_pos = agent.env.state.qubit_pos
+    for i in initial_flips[0]:
+        flip_index = [j==i for j in qubit_pos]
+        flip_index = np.reshape(flip_index, newshape=(2*evaluation_settings['board_size'], evaluation_settings['board_size']))
+        flip_index = np.argwhere(flip_index)
+
+        grid_q[flip_index[0][0],flip_index[0][1]]+=1 % 2
+    grid_q = list(grid_q)
+    grid_q_initial=np.copy(grid_q)
+
+    #qubit_pos = agent.env.state.qubit_pos
+    correction_flips = np.reshape(correction, newshape=(2*evaluation_settings['board_size'], evaluation_settings['board_size']))
+
+
+    MWPM_actions = np.argwhere(correction_flips.flatten()==1)
+    residue_grid = (grid_q_initial + correction_flips) % 2
+
+    
+    check = check_correction(residue_grid)
+
+
+    return check[0], MWPM_actions
+
+
+          
+
+    '''
+    for i in correction:
+
+        flip_index = [j==i for j in qubit_pos]
+        flip_index = np.reshape(flip_index, newshape=(2*evaluation_settings['board_size'], evaluation_settings['board_size']))
+        flip_index = np.argwhere(flip_index)
+
+        grid_q[flip_index[0][0],flip_index[0][1]]+=1 % 2
+    grid_q = list(grid_q)
+
+    '''
+
+    #return check[0], MWPM_actions

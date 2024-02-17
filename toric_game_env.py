@@ -50,6 +50,8 @@ class ToricGameEnv(gym.Env):
         self.logical_error = None
 
 
+        self.parity_check_matrix_plaqs = self.construct_parity_check_plaqs()
+
         self.observation_space = spaces.MultiBinary(self.board_size*self.board_size) #3x3 plaquettes on which we can view syndromes
         self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)) #0-17 qubits on which a bit-flip error can be introduced
 
@@ -59,6 +61,20 @@ class ToricGameEnv(gym.Env):
         # Derive a random seed.
         seed2 = seeding.hash_seed(seed1 + 1) % 2**32
         return [seed1, seed2]
+    
+
+    def construct_parity_check_plaqs(self):
+
+        #construct partiy check matrix for plaquette positions w.r.t qubit positions (needed for MWPM decoding)
+        parity_check_matrix_plaqs = np.zeros((len(self.state.plaquet_pos), len(self.state.qubit_pos)))
+        
+        for plaq_ind, plaq_pos in enumerate(self.state.plaquet_pos):
+            neighbours = self.find_neighboring_qubits(plaq_pos)
+            for neighbour in neighbours:
+                parity_check_matrix_plaqs[plaq_ind][neighbour] = 1 
+
+        return parity_check_matrix_plaqs      
+
 
     def find_neighboring_qubits(self, plaq):
         '''Find qubits adjacent to given plaquette.'''
@@ -86,11 +102,68 @@ class ToricGameEnv(gym.Env):
         return self.action_masks_list
 
 
+    def check_correction(self,grid_q):
+        """(tested for random ones):Check if the correction is correct(no logical X gates)
+        input:
+            grid_q: grid of qubit with errors and corrections
+        output:
+            corrected: boolean whether correction is correct.
+        """
+        # correct if even times logical X1,X2=> even number of times through certain edges
+        # upper row = X1
+        if sum(grid_q[0]) % 2 == 1:
+            return (False, 'X1')
+        # odd rows = X2
+        if sum([grid_q[x][0] for x in range(1, len(grid_q), 2)]) == 1:
+            return (False, 'X2')
+
+        # and if all stabilizers give outcome +1 => even number of qubit flips for each stabilizer
+        # is this needed? or assume given stabilizer outcome is corrected for sure?
+        for row_idx in range(int(len(grid_q) / 2)):
+            for col_idx in range(len(grid_q[0])):
+                all_errors = 0
+                all_errors += grid_q[2 * row_idx][col_idx]  # above stabilizer
+                all_errors += grid_q[2 * row_idx + 1][col_idx]  # left of stabilizer
+                if row_idx < int(len(grid_q) / 2) - 1:  # not the last row
+                    all_errors += grid_q[2 * (row_idx + 1)][col_idx]
+                else:  # last row
+                    all_errors += grid_q[0][col_idx]
+                if col_idx < len(grid_q[2 * row_idx + 1]) - 1:  # not the last column
+                    all_errors += grid_q[2 * row_idx + 1][col_idx + 1]
+                else:  # last column
+                    all_errors += grid_q[2 * row_idx + 1][0]
+                if all_errors % 2 == 1:
+                    return (False, 'stab', row_idx, col_idx)  # stabilizer gives error -1
+
+        return (True, 'end')
+
+
+    def check(self, flips, error):
+
+
+        grid_q = [[0 for col in range(self.board_size)] for row in range(2 * self.board_size)]
+        grid_q=np.array(grid_q)
+        for i in flips[0]:
+            flip_index = [j==i for j in self.state.qubit_pos]
+            flip_index = np.reshape(flip_index, newshape=(2*self.board_size, self.board_size))
+            flip_index = np.argwhere(flip_index)
+            grid_q[flip_index[0][0],flip_index[0][1]]+=1 % 2
+        grid_q = list(grid_q)
+
+        correction_error = self.check_correction(grid_q)[0]
+        if (correction_error == error):
+            print("oeps,mwpm", flips, error)
+
+
+        logical_error = self.check_logical_error()
+        if not (logical_error==error):
+            print("oeps, agent", flips, error)
+        
 
 
 
 
-    def generate_errors(self):
+    def generate_errors(self, allow_empty=False):
 
         self.state.reset()
 
@@ -103,16 +176,17 @@ class ToricGameEnv(gym.Env):
         self.logical_error=self.check_logical_error()
         self.done=self.state.has_no_syndromes()
 
-        if self.done == True:
-            self.generate_errors()
 
+        #for evaluation
+        if not allow_empty and (self.done or self.logical_error):
+            self.generate_errors()
 
         return self.state.encode(self.channels, self.memory)
 
-    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None, allow_empty=False) -> tuple[Any, dict[str, Any]]:
          super().reset(seed=seed, options=options)
 
-         initial_observation = self.generate_errors()
+         initial_observation = self.generate_errors(allow_empty)
 
          return initial_observation, {'state': self.state, 'message':"reset"}
 
@@ -345,8 +419,9 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
             but report only the syndrome
         '''
 
+        #error = True
         for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
-        #for q in [10,20,30]:
+        #for q in [3,9,15,16,0]:
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -355,6 +430,7 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
         self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
 
+        #self.check(self.initial_qubits_flips, error)
 
 
 
@@ -384,6 +460,7 @@ class Board(object):
         qubit_pos   = [[x,y] for x in range(2*size) for y in range((x+1)%2, 2*size, 2)]
         plaquet_pos = [[x,y] for x in range(1,2*size,2) for y in range(1,2*size,2)]
         star_pos    = [[x,y] for x in range(0,2*size,2) for y in range(0,2*size,2)]
+
 
         return qubit_pos, plaquet_pos, star_pos
 
