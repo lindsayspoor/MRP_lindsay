@@ -35,9 +35,10 @@ class ToricGameEnv(gym.Env):
         self.success_reward=settings['s_reward']
         self.mask_actions=settings['mask_actions']
         self.illegal_action_reward = settings['i_reward']
-        self.lambda_value = settings['lambda']
         self.N = settings['N']
         self.pauli_opt=0
+        self.max_steps=50
+        self.counter=0
 
         # Keep track of the moves
         self.qubits_flips = [[],[]]
@@ -185,7 +186,8 @@ class ToricGameEnv(gym.Env):
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None, allow_empty=False) -> tuple[Any, dict[str, Any]]:
          super().reset(seed=seed, options=options)
-
+        
+         self.counter=0
          initial_observation = self.generate_errors(allow_empty)
 
          return initial_observation, {'state': self.state, 'message':"reset"}
@@ -252,29 +254,37 @@ class ToricGameEnv(gym.Env):
             info: state dict
         '''
 
+        if self.counter==self.max_steps:
+            return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, True,{'state': self.state, 'message':"max steps reached"}
+
+
         if self.done:
             if self.logical_error:
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
             else:
                 return self.state.encode(self.channels, self.memory), self.success_reward, self.done, False,{'state': self.state, 'message':"success"}
 
-
    
         self.qubits_flips[0].append(location)
    
         self.state.act(self.state.qubit_pos[location], self.pauli_opt)
 
-
+        self.counter+=1
+                
         if self.state.has_no_syndromes()==False:
             self.done = False
             #self.logical_error = self.check_logical_error()
+            if self.mask_actions==False:
 
-            #if self.logical_error:
-                #self.done=True
-                #return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
-            #else:
-            return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
-
+                self.action_masks_list = self.action_masks()
+                if self.action_masks_list[location] == False:
+                    return self.state.encode(self.channels, self.memory), self.illegal_action_reward, self.done, False,{'state': self.state, 'message':"illegal action, continue"}
+                else:
+                    return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
+            
+            else:
+                return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
+        
         else:
             self.done=True
             self.logical_error = self.check_logical_error()
