@@ -26,7 +26,6 @@ class ToricGameEnv(gym.Env):
         self.settings=settings
 
         self.board_size = settings['board_size']
-        self.error_model = settings['error_model']
         self.channels = [0]
         self.memory = False
         self.error_rate = settings['error_rate']

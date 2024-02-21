@@ -8,7 +8,7 @@ from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
 
-from config import ErrorModel
+
 
 ### Environment
 class ToricGameEnvCNN(gym.Env):
@@ -26,7 +26,6 @@ class ToricGameEnvCNN(gym.Env):
         self.settings=settings
 
         self.board_size = settings['board_size']
-        self.error_model = settings['error_model']
         self.channels = [0]
         self.memory = False
         self.error_rate = settings['error_rate']
@@ -35,7 +34,6 @@ class ToricGameEnvCNN(gym.Env):
         self.success_reward=settings['s_reward']
         self.mask_actions=settings['mask_actions']
         self.illegal_action_reward = settings['i_reward']
-        self.lambda_value = settings['lambda']
         self.N = settings['N']
         self.pauli_opt=0
 

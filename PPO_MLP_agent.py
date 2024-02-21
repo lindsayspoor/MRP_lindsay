@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from toric_game_env import ToricGameEnv, ToricGameEnvFixedErrs
-from config import ErrorModel
 from stable_baselines3.ppo.policies import MlpPolicy
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 import os
@@ -130,7 +129,7 @@ def evaluate_model(agent, evaluation_settings, render, number_evaluations, max_m
     for k in tqdm(range(number_evaluations)):
 
         obs, info = agent.env.reset(allow_empty=True)
-        initial_flips = AgentPPO.env.initial_qubits_flips
+        initial_flips = agent.env.initial_qubits_flips
         if render:
             agent.env.render()
         obs0=obs.copy()
@@ -373,7 +372,6 @@ error_rates_curriculum=[error_rate]
 
 #SET SETTINGS TO INITIALISE AGENT ON
 initialisation_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'l_reward': logical_error_reward,
             's_reward': success_reward,
@@ -391,7 +389,6 @@ initialisation_settings = {'board_size': board_size,
 
 #SET SETTINGS TO LOAD TRAINED AGENT ON
 loaded_model_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'l_reward': logical_error_reward,
             's_reward': success_reward,
@@ -408,7 +405,6 @@ loaded_model_settings = {'board_size': board_size,
             }
 
 evaluation_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'l_reward': logical_error_reward,
             's_reward': success_reward,
