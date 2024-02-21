@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from toric_game_dynamic_env import ToricGameDynamicEnv, ToricGameDynamicEnvFixedErrs
-from config import ErrorModel
 from stable_baselines3.ppo.policies import MlpPolicy
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 import os
@@ -276,7 +275,6 @@ error_rates_curriculum=list(np.linspace(0.01,0.20,6))[1:]
 
 #SET SETTINGS TO INITIALISE AGENT ON
 initialisation_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'lr':0.001,
             'total_timesteps': total_timesteps,
@@ -292,7 +290,6 @@ initialisation_settings = {'board_size': board_size,
 
 #SET SETTINGS TO LOAD TRAINED AGENT ON
 loaded_model_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'lr':0.001,
             'total_timesteps': total_timesteps,
@@ -307,7 +304,6 @@ loaded_model_settings = {'board_size': board_size,
             }
 
 evaluation_settings = {'board_size': board_size,
-            'error_model': ErrorModel['UNCORRELATED'],
             'error_rate': error_rate,
             'lr':0.001,
             'total_timesteps': total_timesteps,

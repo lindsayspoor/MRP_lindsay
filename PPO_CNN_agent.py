@@ -312,7 +312,7 @@ def evaluate_fixed_errors(agent, evaluation_settings, N_evaluates, render, numbe
     return success_rates, success_rates_MWPM,observations, results, actions
 
 
-def evaluate_error_rates(evaluation_settings, error_rates, render, number_evaluations, max_moves, check_fails, save_files, fixed):
+def evaluate_error_rates(agent, evaluation_settings, error_rates, render, number_evaluations, max_moves, check_fails, save_files, fixed):
     success_rates=[]
     success_rates_MWPM=[]
     observations_all=[]

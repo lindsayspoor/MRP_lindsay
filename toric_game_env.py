@@ -8,7 +8,7 @@ from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
 
-from config import ErrorModel
+
 
 ### Environment
 class ToricGameEnv(gym.Env):

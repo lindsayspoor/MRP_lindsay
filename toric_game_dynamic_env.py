@@ -8,7 +8,7 @@ from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
 
-from config import ErrorModel
+
 
 ### Environment
 class ToricGameDynamicEnv(gym.Env):
@@ -26,7 +26,7 @@ class ToricGameDynamicEnv(gym.Env):
         self.settings=settings
 
         self.board_size = settings['board_size']
-        self.error_model = settings['error_model']
+
         self.channels = [0]
         self.memory = False
         self.error_rate = settings['error_rate']
