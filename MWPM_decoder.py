@@ -1,8 +1,8 @@
 import numpy as np
 import networkx as nx
 from pymatching import Matching
-import math
-from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag
+
+
 
 
 
@@ -181,17 +181,3 @@ def decode_MWPM_pymatching(parity_check_matrix,qubit_pos,obs0, initial_flips, ev
 
 
           
-
-    '''
-    for i in correction:
-
-        flip_index = [j==i for j in qubit_pos]
-        flip_index = np.reshape(flip_index, newshape=(2*evaluation_settings['board_size'], evaluation_settings['board_size']))
-        flip_index = np.argwhere(flip_index)
-
-        grid_q[flip_index[0][0],flip_index[0][1]]+=1 % 2
-    grid_q = list(grid_q)
-
-    '''
-
-    #return check[0], MWPM_actions
