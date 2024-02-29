@@ -1,21 +1,16 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
-from toric_game_env import ToricGameEnv, ToricGameEnvFixedErrs
+from toric_game_static_env import ToricGameEnv, ToricGameEnvFixedErrs, ToricGameEnvLocalErrs
 from stable_baselines3.ppo.policies import MlpPolicy
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 import os
-from stable_baselines3.common.callbacks import BaseCallback
 from sb3_contrib import MaskablePPO
-from callback_class import SaveOnBestTrainingRewardCallback
+from custom_callback import SaveOnBestTrainingRewardCallback
 from sb3_contrib.common.maskable.utils import get_action_masks
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.results_plotter import load_results, ts2xy
-from stable_baselines3.common.policies import obs_as_tensor
-import networkx as nx
 from tqdm import tqdm
 from plot_functions import plot_benchmark_MWPM, plot_log_results, render_evaluation
-from MWPM_decoder import decode_MWPM_method, decode_MWPM_pymatching
+from MWPM_decoder import decode_MWPM_pymatching
 
 
 
@@ -31,7 +26,7 @@ class PPO_agent:
         # Create log dir
         self.log=log
         if self.log:
-            self.log_dir = "log_dir"
+            self.log_dir = "log_dirs/log_dir_tryout"
             os.makedirs(self.log_dir, exist_ok=True)
 
 
@@ -45,7 +40,10 @@ class PPO_agent:
         if self.initialisation_settings['fixed']:
             self.env = ToricGameEnvFixedErrs(self.initialisation_settings)
         else:
-            self.env = ToricGameEnv(self.initialisation_settings)
+            if not self.initialisation_settings['correlated']:
+                self.env = ToricGameEnv(self.initialisation_settings)
+            else:
+                self.env = ToricGameEnvLocalErrs(self.initialisation_settings)
 
 
         # Logs will be saved in log_dir/monitor.csv
@@ -72,7 +70,10 @@ class PPO_agent:
         if settings['fixed']:
             self.env = ToricGameEnvFixedErrs(settings)
         else:
-            self.env = ToricGameEnv(settings)
+            if not self.initialisation_settings['correlated']:
+                self.env = ToricGameEnv(settings)
+            else:
+                self.env = ToricGameEnvLocalErrs(settings)
 
         # Logs will be saved in log_dir/monitor.csv
         if self.log:
@@ -99,7 +100,8 @@ class PPO_agent:
         print("loading the model...")
 
         if self.initialisation_settings['mask_actions']:
-            self.model=MaskablePPO.load(f"trained_models/ppo_{load_model_path}")
+            #self.model=MaskablePPO.load(f"trained_models/ppo_{load_model_path}")
+            self.model=MaskablePPO.load("trained_models/ppo_board_size=5error_rate=0.1l_reward=5s_reward=10c_reward=-1i_reward=-2lr=0.001total_timesteps=1000000mask_actions=Truecorrelated=Falsefixed=FalseN=1ent_coef=0.01clip_range=0.1")
         else:
             self.model=PPO.load(f"trained_models/ppo_{load_model_path}")
         print("loading done")
@@ -177,8 +179,8 @@ def evaluate_model(agent, evaluation_settings, render, number_evaluations, max_m
                     #print("logical error")
                     #render_evaluation(obs0_k,evaluation_settings, actions[k,:,:], initial_flips)
                     if check_fails:
-                        #if results[k,0]==0 and results[k,1]==1:
-                        if results[k,0]==1 and results[k,1]==0:
+                        if results[k,0]==0 and results[k,1]==1:
+                        #if results[k,0]==1 and results[k,1]==0:
                             
                             print(info['message'])
                             render_evaluation(obs0_k,evaluation_settings, actions[k,:,:], initial_flips)
@@ -253,21 +255,21 @@ def evaluate_fixed_errors(agent, evaluation_settings, N_evaluates, render, numbe
         evaluation_path+=f"{key}={value}"
 
     if save_files:
-        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results"
+        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/static_ppo/"
         if fixed:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
         else:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
     return success_rates, success_rates_MWPM,observations, results, actions
 
@@ -304,21 +306,21 @@ def evaluate_error_rates(agent,evaluation_settings, error_rates, render, number_
         evaluation_path+=f"{key}={value}"
 
     if save_files:
-        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results"
+        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/static_ppo/"
         if fixed:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
         else:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_ppo_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
     return success_rates, success_rates_MWPM,observations, results, actions
 
@@ -327,41 +329,44 @@ def evaluate_error_rates(agent,evaluation_settings, error_rates, render, number_
 
 
 #SETTINGS FOR RUNNING THIS SCRIPT
-train=False
+train=True
 curriculum=False #if set to True the agent will train on N_curriculum or error_rate_curriculum examples, using the training experience from 
 benchmark_MWPM=False
 save_files=True#
 render=False
 number_evaluations=10000
-max_moves=50
+max_moves=200
 evaluate=True
 check_fails=False
 
 error_rates_curriculum=list(np.linspace(0.01,0.15,6))
 
 board_size=5
-error_rate=0.01
+error_rate=0.1
 #error_rate=error_rates_curriculum[4]
 ent_coef=0.01
 clip_range=0.1
-N=2 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
-logical_error_reward=5 #the reward the agent gets when it has removed all syndrome points, but the terminal board state claims that there is a logical error.
-success_reward=10 #the reward the agent gets when it has removed all syndrome points, and the terminal board state claims that there is no logical error, ans therefore the agent has successfully done its job.
+N=1 #the number of fixed initinal flips N the agent model is trained on or loaded when fixed is set to True
+logical_error_reward=-1 #the reward the agent gets when it has removed all syndrome points, but the terminal board state claims that there is a logical error.
+success_reward=-1 #the reward the agent gets when it has removed all syndrome points, and the terminal board state claims that there is no logical error, ans therefore the agent has successfully done its job.
 continue_reward=-1 #the reward the agent gets for each action that does not result in the terminal board state. If negative it gets penalized for each move it does, therefore giving the agent an incentive to remove syndromes in as less moves as possible.
 illegal_action_reward=-2 #the reward the agent gets when mask_actions is set to False and therefore the agent gets penalized by choosing an illegal action.
 total_timesteps=1000000
 learning_rate= 0.001
-mask_actions=False #if set to True action masking is enabled, the illegal actions are masked out by the model. If set to False the agent gets a reward 'illegal_action_reward' when choosing an illegal action.
+mask_actions=True #if set to True action masking is enabled, the illegal actions are masked out by the model. If set to False the agent gets a reward 'illegal_action_reward' when choosing an illegal action.
 log = True #if set to True the learning curve during training is registered and saved.
 lambda_value=1
 fixed=False #if set to True the agent is trained on training examples with a fixed amount of N initial errors. If set to False the agent is trained on training examples given an error rate error_rate for each qubit to have a chance to be flipped.
 evaluate_fixed=False #if set to True the trained model is evaluated on examples with a fixed amount of N initial errors. If set to False the trained model is evaluated on examples in which each qubit is flipped with a chance of error_rate.
 N_evaluates = [1,2,3,4,5] #the number of fixed initial flips N the agent is evaluated on if evaluate_fixed is set to True.
 N_evaluates=[2]
+
+correlated=True
+
 #error_rates_eval=list(np.linspace(0.01,0.15,10))
 error_rates_eval=list(np.linspace(0.01,0.15,10))
 #error_rates_eval=list(np.linspace(0.01,0.15,10))[0:4]
-#error_rates_eval=[0.08]
+#error_rates_eval=[0.1]
 N_curriculums=[3]
 
 #N_curriculums=[5]
@@ -380,11 +385,12 @@ initialisation_settings = {'board_size': board_size,
             'lr':learning_rate,
             'total_timesteps': total_timesteps,
             'mask_actions': mask_actions,
-            'lambda': lambda_value,
+            'correlated':correlated,
             'fixed':fixed,
             'N':N,
             'ent_coef':ent_coef,
-            'clip_range':clip_range
+            'clip_range':clip_range,
+            'max_moves':max_moves
             }
 
 #SET SETTINGS TO LOAD TRAINED AGENT ON
@@ -397,11 +403,12 @@ loaded_model_settings = {'board_size': board_size,
             'lr':learning_rate,
             'total_timesteps': total_timesteps,
             'mask_actions': mask_actions,
-            'lambda': lambda_value,
+            'correlated':correlated,
             'fixed':fixed,
             'N':N,
             'ent_coef':ent_coef,
-            'clip_range':clip_range
+            'clip_range':clip_range,
+            'max_moves':max_moves
             }
 
 evaluation_settings = {'board_size': board_size,
@@ -413,11 +420,12 @@ evaluation_settings = {'board_size': board_size,
             'lr':learning_rate,
             'total_timesteps': total_timesteps,
             'mask_actions': mask_actions,
-            'lambda': lambda_value,
+            'correlated':correlated,
             'fixed':fixed,
             'N':N,
             'ent_coef':ent_coef,
-            'clip_range':clip_range
+            'clip_range':clip_range,
+            'max_moves':max_moves
             }
 
 

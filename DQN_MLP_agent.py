@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import DQN
-from toric_game_env import ToricGameEnv, ToricGameEnvFixedErrs
+from toric_game_static_env import ToricGameEnv, ToricGameEnvFixedErrs
 from stable_baselines3.ppo.policies import MlpPolicy
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 import os
 from stable_baselines3.common.callbacks import BaseCallback
 from sb3_contrib import MaskablePPO
-from callback_class import SaveOnBestTrainingRewardCallback
+from custom_callback import SaveOnBestTrainingRewardCallback
 from sb3_contrib.common.maskable.utils import get_action_masks
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import load_results, ts2xy
@@ -241,21 +241,21 @@ def evaluate_fixed_errors(agent, evaluation_settings, N_evaluates, render, numbe
         evaluation_path+=f"{key}={value}"
 
     if save_files:
-        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results"
+        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/static_dqn"
         if fixed:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
         else:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
     return success_rates, success_rates_MWPM,observations, results, actions
     
@@ -292,21 +292,21 @@ def evaluate_error_rates(agent,evaluation_settings, error_rates, render, number_
         evaluation_path+=f"{key}={value}"
 
     if save_files:
-        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results"
+        folder = "/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/static_dqn"
         if fixed:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", results)
-            np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,0])
+            np.savetxt(f"{folder}/actions_MWPM/actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['N']}.csv", actions[:,:,1])
         else:
             np.savetxt(f"{folder}/success_rates_agent/success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates)
-            np.savetxt(f"{folder}/success_rates_MWPM/new_success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
+            np.savetxt(f"{folder}/success_rates_MWPM/success_rates_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", success_rates_MWPM)
             np.savetxt(f"{folder}/observations/observations_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", observations)
             np.savetxt(f"{folder}/results_agent_MWPM/results_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", results)
             np.savetxt(f"{folder}/actions_agent_MWPM/actions_agent_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,0])
-            np.savetxt(f"{folder}/actions_agent_MWPM/new_actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
+            np.savetxt(f"{folder}/actions_agent_MWPM/actions_MWPM_dqn_{evaluation_path}_{loaded_model_settings['error_rate']}.csv", actions[:,:,1])
 
     return success_rates, success_rates_MWPM,observations, results, actions
 

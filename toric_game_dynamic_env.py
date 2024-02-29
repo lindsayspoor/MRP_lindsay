@@ -31,21 +31,20 @@ class ToricGameDynamicEnv(gym.Env):
         self.memory = False
         self.error_rate = settings['error_rate']
         self.iteration_step = settings['iteration_step']
-        #self.logical_error_reward=settings['l_reward']
-        #self.continue_reward=settings['c_reward']
-        #self.success_reward=settings['s_reward']
         self.mask_actions=settings['mask_actions']
-        #self.illegal_action_reward = settings['i_reward']
-        #self.lambda_value = settings['lambda']
         self.N = settings['N']
         self.new_N=settings['new_N']
         self.pauli_opt=0
+        self.continue_reward = settings['c_reward']
+        self.empty_reward = settings['e_reward']
+        self.logical_error_reward = settings['l_reward']
 
         # Keep track of the moves
         self.qubits_flips = [[],[]]
         self.initial_qubits_flips = [[],[]]
 
         self.counter=0 #counts the amount of steps taken by the agent
+        self.max_steps=300
 
         # Empty State
         self.state = Board(self.board_size)
@@ -210,10 +209,10 @@ class ToricGameDynamicEnv(gym.Env):
         '''
         #print(f"{self.counter=}")
 
-        if self.counter==300:
+        if self.counter>=self.max_steps:
             #print("max steps reached, terminated.")
-            self.done=True
-            return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"max steps reached, terminated."}
+            #self.done=True
+            return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, True,{'state': self.state, 'message':"max steps reached, terminated."}
 
 
         if (self.counter > 0) and (self.counter % self.iteration_step == 0):
@@ -223,7 +222,7 @@ class ToricGameDynamicEnv(gym.Env):
             if self.done:
                 #print(f"1,logical error")
                 #self.counter=0
-                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
             #else:
                 #self.counter=0
                 #return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
@@ -231,7 +230,7 @@ class ToricGameDynamicEnv(gym.Env):
 
         
 
-        #self.done = self.check_logical_error()
+        self.done = self.check_logical_error()
         #print(f"flipping qubit at {location}")
 
         if location == len(self.state.qubit_pos): #if the last action in the action space is chosen, the agent needs to do nothing in this case.
@@ -242,12 +241,12 @@ class ToricGameDynamicEnv(gym.Env):
                 self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
                 self.state.hidden_state_qubit_values = np.zeros((2,2*self.board_size*self.board_size))
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 1, False, False,{'state': self.state, 'message':"continue"}
+                return self.state.encode(self.channels, self.memory), self.empty_reward, False, False,{'state': self.state, 'message':"continue"}
             
             else:
                 #print("2,logical error")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
    
         else:
             self.qubits_flips[0].append(location)
@@ -262,11 +261,11 @@ class ToricGameDynamicEnv(gym.Env):
             if self.done:
                 #print(f"3,logical_error")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 0, True, False,{'state': self.state, 'message':"logical_error"}
+                return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
             else:
                 #print(f"3,continue")
                 self.counter+=1
-                return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
+                return self.state.encode(self.channels, self.memory), self.continue_reward, False, False,{'state': self.state, 'message':"continue"}
 
 
 

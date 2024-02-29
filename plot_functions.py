@@ -71,7 +71,7 @@ def plot_log_results(log_folder,  save_model_path, title="Average training rewar
     # Truncate x
     x = x[len(x) - len(y) :]
 
-    np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/log_results/cnn_log_results_{save_model_path}.csv",(x,y) )
+    np.savetxt(f"/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Files_results/log_results/log_results_{save_model_path}.csv",(x,y) )
 
     fig = plt.figure(title)
     plt.plot(x, y, color = 'blue', linewidth=0.9)
@@ -113,19 +113,21 @@ def plot_log_results_2(log_dirs, save_model_path, title="Multi Average training 
     plt.show()
     plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/ablation_study_learning_curve_{save_model_path}.pdf')
 
-def plot_log_results_files(file1, file2, file3, timesteps, save_model_path, title="Multi Average training reward"):
+def plot_log_results_files(file1, file2, file3, file4,timesteps, save_model_path, title="Multi Average training reward"):
 
     fig = plt.figure(title, figsize=(7,6))
 
-    plt.plot(timesteps, file1, label=r"lr=0.0001", linewidth=0.95)
-    plt.plot(timesteps, file2, label=r"lr=0.001", linewidth=0.95)
-    plt.plot(timesteps, file3, label=r"lr=0.01", linewidth=0.95)
+    plt.plot(np.arange(0,len(file1)), file1, label=r"lr=0.0001", linewidth=0.95)
+    plt.plot(np.arange(0,len(file2)), file2, label=r"lr=0.001", linewidth=0.95)
+    plt.plot(np.arange(0,len(file3)), file3, label=r"lr=0.01", linewidth=0.95)
+    plt.plot(np.arange(0,len(file4)), file4, label=r"lr annealing", linewidth=0.95)
 
 
-    plt.yscale("linear")
+    plt.yscale("log")
     plt.xlabel("Number of training iterations", fontsize=16)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
+    plt.xlim(0,40000)
     #plt.xlabel("Number of training timesteps")
     plt.ylabel("Reward", fontsize=16)
     plt.grid()
@@ -296,35 +298,24 @@ def plot_benchmark_MWPM_2(path_plot,success_rates_all_3, success_rates_all_MWPM_
     plt.savefig(path_plot)
     plt.show()
 
-def plot_different_error_rates(path_plot,success_rates_all_5, success_rates_all_MWPM_5, success_rates_err1, success_rates_err2,success_rates_err3,success_rates_err4,success_rates_err5,success_rates_err6,success_rates_curr,error_rates_eval):#  success_rates_err4, success_rates_err5, success_rates_err6,error_rates_eval):
+def plot_fixed_vs_curr(path_plot,success_rates_all_5, success_rates_all_MWPM_5,success_rates_curr,error_rates_eval):
     
 
-    plt.figure(figsize=(7,5))
+    plt.figure(figsize=(7,6))
     #for j in range(success_rates.shape[0]):
     plt.grid()
     plt.plot(error_rates_eval, success_rates_all_MWPM_5, label=f'd=5 MWPM', linestyle='-.',linewidth=1.1, color='black')
-    #plt.plot(error_rates_eval, success_rates_err1, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err1, label=r'd=5 PPO, $p_{error}=0.01$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_err2, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err2, label=r'd=5 PPO, $p_{error}=0.038$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_err3, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err3, label=r'd=5 PPO, $p_{error}=0.066$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_err4,  linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err4, label=r'd=5 PPO, $p_{error}=0.094$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_err5, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err5, label=r'd=5 PPO, $p_{error}=0.129$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_err6, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, success_rates_err6, label=r'd=5 PPO, $p_{error}=0.15$', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_all_5, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_all_5, label=r'd=5 PPO, $p_{error}=0.1$', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_curr, linestyle='-',linewidth=1.3, color = 'fuchsia')
-    plt.scatter(error_rates_eval, success_rates_curr, label=f"d=5 PPO, curriculum learning", marker="o", s=40, color = 'fuchsia', edgecolors='black',zorder=6)
-    plt.xlabel(r'$p_{error}$')
-    plt.xlim((0,error_rates_eval[-1]+0.005))
-
+    #plt.plot(error_rates_eval, success_rates_all_5, linestyle='-',linewidth=1.1)
+    plt.scatter(error_rates_eval, success_rates_all_5, label=r'd=5 PPO, $p_{error}=0.1$', marker='s', s=45, color='blue',edgecolors='black', zorder=5)
+    #plt.plot(error_rates_eval, success_rates_curr, linestyle='-',linewidth=1.3, color = 'orange')
+    #plt.scatter(error_rates_eval, success_rates_curr, label=f"d=5 PPO, curriculum learning", marker="o", s=45, color = 'orange', edgecolors='black',zorder=6)
+    plt.xlabel(r'$p_{error}$', fontsize=16)
+    plt.xlim((0.005,error_rates_eval[-1]+0.005))
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
     #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'$p_s$')
-    plt.legend()
+    plt.ylabel(r'$p_s$', fontsize=16)
+    plt.legend(prop={'size': 15})
     plt.savefig(path_plot)
     plt.show()
 
@@ -405,5 +396,34 @@ def plot_mean_moves(path_plot, error_rates_eval, mean_moves1,mean_moves2,mean_mo
     #plt.title(r'Toric Code - PPO vs MWPM')
     plt.ylabel("Mean number of moves per game", fontsize=16)
     plt.legend(prop={'size': 15})
+    plt.savefig(path_plot)
+    plt.show()
+
+
+def plot_single_box_dynamic(path_plot, rewards_agent):
+
+    plt.figure(figsize=(7,6))
+
+    plt.boxplot(rewards_agent)
+    plt.xlabel("Agent", fontsize=16)
+    plt.ylabel("Reward", fontsize=16)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.savefig(path_plot)
+    plt.show()
+
+
+def plot_multiple_boxes_dynamic(path_plot, moves_agent1, moves_agent2, moves_agent3, moves_agent4, moves_agent5):
+
+    labels = ['Random', r'$(N,N_{new},k)$''\n =(1,1,2)', r'$(N,N_{new},k)$''\n =(1,1,3)',r'$(N,N_{new},k)$''\n =(2,2,3)', r'$(N,N_{new},k)$''\n =(2,2,4)']
+    moves_all=[moves_agent1,moves_agent2, moves_agent3, moves_agent4, moves_agent5]
+
+    plt.figure(figsize=(15,8))
+    plt.grid(axis='y',alpha=0.5)
+
+    plt.boxplot(moves_all, labels=labels)
+    plt.ylabel("Score", fontsize=16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=14)
     plt.savefig(path_plot)
     plt.show()
