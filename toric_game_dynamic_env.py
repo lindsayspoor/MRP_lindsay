@@ -1,9 +1,7 @@
 from __future__ import division
 from typing import Any
 import numpy as np
-
 import gymnasium as gym
-#import gym
 from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
@@ -31,10 +29,10 @@ class ToricGameDynamicEnv(gym.Env):
         self.memory = False
         self.error_rate = settings['error_rate']
         self.iteration_step = settings['iteration_step']
-        self.mask_actions=settings['mask_actions']
+        self.mask_actions = settings['mask_actions']
         self.N = settings['N']
-        self.new_N=settings['new_N']
-        self.pauli_opt=0
+        self.new_N = settings['new_N']
+        self.pauli_opt = 0
         self.continue_reward = settings['c_reward']
         self.empty_reward = settings['e_reward']
         self.logical_error_reward = settings['l_reward']
@@ -43,8 +41,8 @@ class ToricGameDynamicEnv(gym.Env):
         self.qubits_flips = [[],[]]
         self.initial_qubits_flips = [[],[]]
 
-        self.counter=0 #counts the amount of steps taken by the agent
-        self.max_steps=300
+        self.counter = 0 # counts the amount of steps taken by the agent
+        self.max_steps = 300
 
         # Empty State
         self.state = Board(self.board_size)
@@ -52,8 +50,8 @@ class ToricGameDynamicEnv(gym.Env):
         self.logical_error = None
 
 
-        self.observation_space = spaces.MultiBinary(self.board_size*self.board_size) #3x3 plaquettes on which we can view syndromes #extra lagen toevoegen en dan met np.roll updaten
-        self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)+1) #last action = 'do nothing'
+        self.observation_space = spaces.MultiBinary(self.board_size*self.board_size) # dxd plaquettes on which we can view syndromes
+        self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)+1) # last action = 'do nothing'
 
 
     def seed(self, seed=None):
@@ -65,7 +63,7 @@ class ToricGameDynamicEnv(gym.Env):
     def find_neighboring_qubits(self, plaq):
         '''Find qubits adjacent to given plaquette.'''
 
-        neighboring_qubits=[]
+        neighboring_qubits = []
         a,b = plaq[0], plaq[1]
         neighboring_qubit_pos = [[(a-1)%(2*self.state.size),b%(2*self.state.size)],[a%(2*self.state.size),(b-1)%(2*self.state.size)],[a%(2*self.state.size),(b+1)%(2*self.state.size)],[(a+1)%(2*self.state.size),b%(2*self.state.size)]]
         for i in neighboring_qubit_pos:
@@ -75,21 +73,21 @@ class ToricGameDynamicEnv(gym.Env):
 
     def action_masks(self):
 
-        self.action_masks_list=np.zeros((len(self.state.qubit_pos)+1))
-        self.action_masks_list[:]=False
+        self.action_masks_list = np.zeros((len(self.state.qubit_pos)+1))
+        self.action_masks_list[:] = False
 
-        if self.state.has_no_syndromes()==True: #if there are no syndrome points on the board, the agent can only "do nothing"
+        if self.state.has_no_syndromes() == True: # if there are no syndrome points on the board, the agent can only "do nothing"
             qubit_number = len(self.state.qubit_pos)
-            self.action_masks_list[qubit_number]=True
+            self.action_masks_list[qubit_number] = True
 
         else:
             for i in self.state.syndrome_pos:
                 mask_pos = self.find_neighboring_qubits(i)
-                self.action_masks_list[mask_pos]=True
+                self.action_masks_list[mask_pos] = True
                 
 
 
-        self.action_masks_list=list(self.action_masks_list)
+        self.action_masks_list = list(self.action_masks_list)
 
         return self.action_masks_list
 
@@ -107,38 +105,31 @@ class ToricGameDynamicEnv(gym.Env):
         self.initial_qubits_flips = [[],[]]
 
         self._set_initial_errors(self.N)
-        self.action_mask_list=self.action_masks()
+        self.action_mask_list = self.action_masks()
 
-
-        self.done=self.check_logical_error()
-        #print(f"{self.done=}")
-        #self.render()
+        self.done = self.check_logical_error()
 
 
         return self.state.encode(self.channels, self.memory)
 
 
     def generate_new_errors(self):
-        #print("generating new error")
+
 
         self._set_new_errors(self.new_N)
+        self.action_masks_list = self.action_masks()
 
-        self.action_masks_list=self.action_masks()
-        #print(f"{self.action_mask_list=}")
+        self.done = self.check_logical_error()
 
-        self.done=self.check_logical_error()
-        #print(f"{self.done=}")
-        #self.render()
 
         return self.state.encode(self.channels, self.memory)
 
 
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
-        super().reset(seed=seed, options=options)
+        super().reset(seed = seed, options = options)
 
-
-        self.counter=0
+        self.counter = 0
         initial_observation = self.generate_errors()
 
         return initial_observation, {'state': self.state, 'message':"reset"}
@@ -174,13 +165,10 @@ class ToricGameDynamicEnv(gym.Env):
         for i, p in enumerate(self.state.qubit_pos):
             pos=(a*p[0], a*p[1])
             fc='darkgrey'
-            #if self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 0:
             if self.state.hidden_state_qubit_values[0][i] == 1 and self.state.hidden_state_qubit_values[1][i] == 0:
                 fc='darkblue'
-            #elif self.state.qubit_values[0][i] == 0 and self.state.qubit_values[1][i] == 1:
             elif self.state.hidden_state_qubit_values[0][i] == 0 and self.state.hidden_state_qubit_values[1][i] == 1:
                 fc='darkred'
-            #elif self.state.qubit_values[0][i] == 1 and self.state.qubit_values[1][i] == 1:
             elif self.state.hidden_state_qubit_values[0][i] == 1 and self.state.hidden_state_qubit_values[1][i] == 1:
                 fc='darkmagenta'
             circle = plt.Circle( pos , radius=a*0.25, ec='k', fc=fc)
@@ -207,11 +195,9 @@ class ToricGameDynamicEnv(gym.Env):
             done: boolean,
             info: state dict
         '''
-        #print(f"{self.counter=}")
 
-        if self.counter>=self.max_steps:
-            #print("max steps reached, terminated.")
-            #self.done=True
+
+        if self.counter >= self.max_steps:
             return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, True,{'state': self.state, 'message':"max steps reached, terminated."}
 
 
@@ -220,32 +206,26 @@ class ToricGameDynamicEnv(gym.Env):
             self.generate_new_errors()
 
             if self.done:
-                #print(f"1,logical error")
-                #self.counter=0
-                return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
-            #else:
-                #self.counter=0
-                #return self.state.encode(self.channels, self.memory), 0, False, False,{'state': self.state, 'message':"continue"}
 
+                return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
 
         
 
         self.done = self.check_logical_error()
-        #print(f"flipping qubit at {location}")
 
-        if location == len(self.state.qubit_pos): #if the last action in the action space is chosen, the agent needs to do nothing in this case.
-            #print("do nothing")
-            if self.done==False:
-                #print(f"2,continue")
-                #set the qubit values on the board back to zero
+
+        if location == len(self.state.qubit_pos): # if the last action in the action space is chosen, the agent needs to do nothing in this case.
+
+            if self.done == False:
+                # set the qubit values on the board back to zero
                 self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
                 self.state.hidden_state_qubit_values = np.zeros((2,2*self.board_size*self.board_size))
-                self.counter+=1
+                self.counter += 1
                 return self.state.encode(self.channels, self.memory), self.empty_reward, False, False,{'state': self.state, 'message':"continue"}
             
             else:
-                #print("2,logical error")
-                self.counter+=1
+
+                self.counter += 1
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
    
         else:
@@ -253,18 +233,16 @@ class ToricGameDynamicEnv(gym.Env):
             
             self.state.act(self.state.qubit_pos[location], self.pauli_opt)
 
-            #self.render()
-
 
             self.done = self.check_logical_error()
-            #print(f"{self.done=}")
+
             if self.done:
-                #print(f"3,logical_error")
-                self.counter+=1
+
+                self.counter += 1
                 return self.state.encode(self.channels, self.memory), self.logical_error_reward, True, False,{'state': self.state, 'message':"logical_error"}
             else:
-                #print(f"3,continue")
-                self.counter+=1
+
+                self.counter += 1
                 return self.state.encode(self.channels, self.memory), self.continue_reward, False, False,{'state': self.state, 'message':"continue"}
 
 
@@ -300,9 +278,8 @@ class ToricGameDynamicEnv(gym.Env):
                 self.state.act(q, self.pauli_opt)
 
 
-       
         # Now unflip the qubits, they're a secret
-        #self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
+        self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
 
 
@@ -329,10 +306,10 @@ class ToricGameDynamicEnv(gym.Env):
         next_plaq = neighboring_plaqs[0]
 
         if next_plaq in checked_plaqs:
-            next_plaq=neighboring_plaqs[1]
+            next_plaq = neighboring_plaqs[1]
 
             if next_plaq in checked_plaqs:
-                return l_list, closed, checked_plaqs #if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
+                return l_list, closed, checked_plaqs # if a plaquette is already checked on all its neighboring qubits it doesn't need to be checked again
         
 
         checked_plaqs.append(next_plaq)
@@ -343,14 +320,14 @@ class ToricGameDynamicEnv(gym.Env):
 
 
         for i in neighboring_qubits:
-            if i ==l_list[0]:
-                closed = True #closed loop
-                return l_list, closed, checked_plaqs #closed loop
+            if i == l_list[0]:
+                closed = True # closed loop
+                return l_list, closed, checked_plaqs # closed loop
                 
             
-            if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
+            if self.state.hidden_state_qubit_values[0][i] == 1: # is this neighboring qubit a flipped one?
 
-                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) #check again for next flipped qubit if it ends at a syndrome point or not.
+                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) # check again for next flipped qubit if it ends at a syndrome point or not.
 
 
 
@@ -363,9 +340,9 @@ class ToricGameDynamicEnv(gym.Env):
         ny = 0
         for i in l_list:
             if i in self.state.left_boundary_qubits:
-                ny+=self.state.hidden_state_qubit_values[0][i]
+                ny += self.state.hidden_state_qubit_values[0][i]
             if i in self.state.bottom_boundary_qubits:
-                nx+=self.state.hidden_state_qubit_values[0][i]
+                nx += self.state.hidden_state_qubit_values[0][i]
 
         return nx,ny
 
@@ -383,23 +360,23 @@ class ToricGameDynamicEnv(gym.Env):
         Nx = 0 
         Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
 
-        l_list_global=[]
+        l_list_global = []
         for q in self.state.boundary_qubits:
             flat_l_list_global = self.flatten(l_list_global)
 
             if q in flat_l_list_global:
                 continue
 
-            if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
+            if self.state.hidden_state_qubit_values[0][q] == 1: #only check for the flipped qubits on the boundary of the board
                 l_list = []
-                checked_plaqs=[]
+                checked_plaqs = []
                 l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
 
                 if closed:
                     l_list_global.append(l_list)
                     nx,ny = self.number_of_times_boundary(l_list)
-                    Nx+=nx
-                    Ny+=ny
+                    Nx += nx
+                    Ny += ny
 
         if (Nx%2==1) or (Ny%2==1):
             return True #logical error, non-trivial loop
@@ -421,7 +398,6 @@ class ToricGameDynamicEnvFixedErrs(ToricGameDynamicEnv):
         '''
 
         for q in np.random.choice(len(self.state.qubit_pos), N, replace=False):
-            #print(f"setting initial error at {q}")
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -435,7 +411,6 @@ class ToricGameDynamicEnvFixedErrs(ToricGameDynamicEnv):
         '''
 
         for q in np.random.choice(len(self.state.qubit_pos), N, replace=False):
-            #print(f"adding new error at {q}")
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -617,8 +592,8 @@ class Board(object):
         return img
 
     def image_view(self, number=False, channel=0):
+
         image = np.empty((2*self.size, 2*self.size), dtype=object)
-        #print(image)
         for i, plaq in enumerate(self.plaquet_pos):
             if self.op_values[0][i] == 1:
                 image[plaq[0], plaq[1]] = "P"+str(i) if number else "P"

@@ -1,9 +1,7 @@
 from __future__ import division
 from typing import Any
 import numpy as np
-
 import gymnasium as gym
-#import gym
 from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
@@ -48,8 +46,8 @@ class ToricGameEnvCNN(gym.Env):
         self.logical_error = None
 
 
-        self.observation_space = spaces.Box(low=0, high=1, shape=(1,self.board_size,self.board_size), dtype=np.uint8) #3x3 plaquettes on which we can view syndromes
-        self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)) #0-17 qubits on which a bit-flip error can be introduced
+        self.observation_space = spaces.Box(low=0, high=1, shape=(1,self.board_size,self.board_size), dtype=np.uint8) # dxd plaquettes on which we can view syndromes
+        self.action_space = spaces.discrete.Discrete(len(self.state.qubit_pos)) # 2dxd qubits on which a bit-flip error can be introduced
 
 
     def seed(self, seed=None):
@@ -191,12 +189,6 @@ class ToricGameEnvCNN(gym.Env):
 
         if self.state.has_no_syndromes()==False:
             self.done = False
-            #self.logical_error = self.check_logical_error()
-
-            #if self.logical_error:
-                #self.done=True
-                #return self.state.encode(self.channels, self.memory), self.logical_error_reward, self.done, False,{'state': self.state, 'message':"logical_error"}
-            #else:
             return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, False,{'state': self.state, 'message':"continue"}
 
         else:
@@ -267,13 +259,13 @@ class ToricGameEnvCNN(gym.Env):
 
         for i in neighboring_qubits:
             if i ==l_list[0]:
-                closed = True #closed loop
-                return l_list, closed, checked_plaqs #closed loop
+                closed = True # closed loop
+                return l_list, closed, checked_plaqs # closed loop
                 
             
-            if self.state.hidden_state_qubit_values[0][i]==1: #is this neighboring qubit a flipped one?
+            if self.state.hidden_state_qubit_values[0][i]==1: # is this neighboring qubit a flipped one?
 
-                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) #check again for next flipped qubit if it ends at a syndrome point or not.
+                l_list, closed, checked_plaqs = self.find_string(i, l_list, checked_plaqs) # check again for next flipped qubit if it ends at a syndrome point or not.
 
 
 
@@ -304,7 +296,7 @@ class ToricGameEnvCNN(gym.Env):
 
 
         Nx = 0 
-        Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
+        Ny = 0 # counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
 
         l_list_global=[]
         for q in self.state.boundary_qubits:
@@ -313,7 +305,7 @@ class ToricGameEnvCNN(gym.Env):
             if q in flat_l_list_global:
                 continue
 
-            if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
+            if self.state.hidden_state_qubit_values[0][q]==1: # only check for the flipped qubits on the boundary of the board
                 l_list = []
                 checked_plaqs=[]
                 l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
@@ -325,9 +317,9 @@ class ToricGameEnvCNN(gym.Env):
                     Ny+=ny
 
         if (Nx%2==1) or (Ny%2==1):
-            return True #logical error, non-trivial loop
+            return True # logical error, non-trivial loop
 
-        return False #no logical error
+        return False # no logical error
         
 
             
@@ -344,7 +336,6 @@ class ToricGameEnvFixedErrsCNN(ToricGameEnvCNN):
         '''
 
         for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
-        #for q in [2,11,4,12,15]:
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -479,7 +470,7 @@ class Board(object):
     def has_no_syndromes(self):
 
         # Are all syndromes removed?
-        return len(self.syndrome_pos) == 0 #False if it has syndromes, True if there are no syndromes
+        return len(self.syndrome_pos) == 0 # False if it has syndromes, True if there are no syndromes
 
 
 
@@ -527,7 +518,6 @@ class Board(object):
 
     def image_view(self, number=False, channel=0):
         image = np.empty((2*self.size, 2*self.size), dtype=object)
-        #print(image)
         for i, plaq in enumerate(self.plaquet_pos):
             if self.op_values[0][i] == 1:
                 image[plaq[0], plaq[1]] = "P"+str(i) if number else "P"

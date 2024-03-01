@@ -3,7 +3,6 @@ from typing import Any
 import numpy as np
 
 import gymnasium as gym
-#import gym
 from gymnasium.utils import seeding
 from gymnasium import spaces
 import matplotlib.pyplot as plt
@@ -134,64 +133,6 @@ class ToricGameEnv(gym.Env):
         return self.action_masks_list
 
 
-    def check_correction(self,grid_q):
-        """(tested for random ones):Check if the correction is correct(no logical X gates)
-        input:
-            grid_q: grid of qubit with errors and corrections
-        output:
-            corrected: boolean whether correction is correct.
-        """
-        # correct if even times logical X1,X2=> even number of times through certain edges
-        # upper row = X1
-        if sum(grid_q[0]) % 2 == 1:
-            return (False, 'X1')
-        # odd rows = X2
-        if sum([grid_q[x][0] for x in range(1, len(grid_q), 2)]) == 1:
-            return (False, 'X2')
-
-        # and if all stabilizers give outcome +1 => even number of qubit flips for each stabilizer
-        # is this needed? or assume given stabilizer outcome is corrected for sure?
-        for row_idx in range(int(len(grid_q) / 2)):
-            for col_idx in range(len(grid_q[0])):
-                all_errors = 0
-                all_errors += grid_q[2 * row_idx][col_idx]  # above stabilizer
-                all_errors += grid_q[2 * row_idx + 1][col_idx]  # left of stabilizer
-                if row_idx < int(len(grid_q) / 2) - 1:  # not the last row
-                    all_errors += grid_q[2 * (row_idx + 1)][col_idx]
-                else:  # last row
-                    all_errors += grid_q[0][col_idx]
-                if col_idx < len(grid_q[2 * row_idx + 1]) - 1:  # not the last column
-                    all_errors += grid_q[2 * row_idx + 1][col_idx + 1]
-                else:  # last column
-                    all_errors += grid_q[2 * row_idx + 1][0]
-                if all_errors % 2 == 1:
-                    return (False, 'stab', row_idx, col_idx)  # stabilizer gives error -1
-
-        return (True, 'end')
-
-
-    def check(self, flips, error):
-
-
-        grid_q = [[0 for col in range(self.board_size)] for row in range(2 * self.board_size)]
-        grid_q=np.array(grid_q)
-        for i in flips[0]:
-            flip_index = [j==i for j in self.state.qubit_pos]
-            flip_index = np.reshape(flip_index, newshape=(2*self.board_size, self.board_size))
-            flip_index = np.argwhere(flip_index)
-            grid_q[flip_index[0][0],flip_index[0][1]]+=1 % 2
-        grid_q = list(grid_q)
-
-        correction_error = self.check_correction(grid_q)[0]
-        if (correction_error == error):
-            print("oeps,mwpm", flips, error)
-
-
-        logical_error = self.check_logical_error()
-        if not (logical_error==error):
-            print("oeps, agent", flips, error)
-        
-
 
 
 
@@ -284,6 +225,8 @@ class ToricGameEnv(gym.Env):
             done: boolean,
             info: state dict
         '''
+        self.logical_error=self.check_logical_error()
+        self.done=self.state.has_no_syndromes()
 
         if self.counter==self.max_steps:
             return self.state.encode(self.channels, self.memory), self.continue_reward, self.done, True,{'state': self.state, 'message':"max steps reached"}
@@ -304,7 +247,6 @@ class ToricGameEnv(gym.Env):
                 
         if self.state.has_no_syndromes()==False:
             self.done = False
-            #self.logical_error = self.check_logical_error()
             if self.mask_actions==False:
 
                 self.action_masks_list = self.action_masks()
@@ -421,7 +363,7 @@ class ToricGameEnv(gym.Env):
 
 
         Nx = 0 
-        Ny = 0 #counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
+        Ny = 0 # counts the number of logical errors on the board. If Nx or Ny are an even number, this means that 2 logical errors canceled each other.
 
         l_list_global=[]
         for q in self.state.boundary_qubits:
@@ -430,7 +372,7 @@ class ToricGameEnv(gym.Env):
             if q in flat_l_list_global:
                 continue
 
-            if self.state.hidden_state_qubit_values[0][q]==1: #only check for the flipped qubits on the boundary of the board
+            if self.state.hidden_state_qubit_values[0][q]==1: # only check for the flipped qubits on the boundary of the board
                 l_list = []
                 checked_plaqs=[]
                 l_list, closed, checked_plaqs = self.find_string(q, l_list, checked_plaqs)
@@ -442,9 +384,9 @@ class ToricGameEnv(gym.Env):
                     Ny+=ny
 
         if (Nx%2==1) or (Ny%2==1):
-            return True #logical error, non-trivial loop
+            return True # logical error, non-trivial loop
 
-        return False #no logical error
+        return False # no logical error
         
 
             
@@ -460,9 +402,8 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
             but report only the syndrome
         '''
 
-        #error = True
+
         for q in np.random.choice(len(self.state.qubit_pos), self.N, replace=False):
-        #for q in [3,9,15,16,0]:
             q = self.state.qubit_pos[q]
             self.initial_qubits_flips[0].append(q)
             self.state.act(q, self.pauli_opt)
@@ -471,7 +412,7 @@ class ToricGameEnvFixedErrs(ToricGameEnv):
         self.state.qubit_values = np.zeros((2, 2*self.board_size*self.board_size))
 
 
-        #self.check(self.initial_qubits_flips, error)
+
 
 class ToricGameEnvLocalErrs(ToricGameEnv):
     def __init__(self, settings):
@@ -487,19 +428,19 @@ class ToricGameEnvLocalErrs(ToricGameEnv):
 
         probabilities = np.ones((len(self.state.qubit_pos)))
 
-        #
-        number_flips = np.random.binomial(len(self.state.qubit_pos),self.error_rate) #choose the amount of qubits to flip according to error rate
+
+        number_flips = np.random.binomial(len(self.state.qubit_pos),self.error_rate) # choose the amount of qubits to flip according to error rate
 
         for i in range(number_flips):
             probabilities=probabilities/np.sum(probabilities)
-            q = np.random.choice(len(self.state.qubit_pos), p=probabilities) #choose which qubit to flip according to 'probabilities', uniformly distributed at first flip
+            q = np.random.choice(len(self.state.qubit_pos), p=probabilities) # choose which qubit to flip according to 'probabilities', uniformly distributed at first flip
 
             self.initial_qubits_flips[0].append( self.state.qubit_pos[q] )
             self.state.act(self.state.qubit_pos[q], self.pauli_opt)
 
             weighted_matrix = self.construct_weighted_matrix(self.dist_matrix, q)
 
-            probabilities = probabilities*weighted_matrix #update 'probabilities' such that the qubits close to the former qubit flips have a higher chance to flip as well
+            probabilities = probabilities*weighted_matrix # update 'probabilities' such that the qubits close to the former qubit flips have a higher chance to flip as well
 
 
         # Now unflip the qubits, they're a secret
@@ -573,7 +514,7 @@ class Board(object):
     def reset(self):
         
         self.qubit_values = np.zeros((2, 2*self.size*self.size))
-        self.hidden_state_qubit_values = np.zeros((2, 2*self.size*self.size))  #make hidden state that contains the information about the initially flipped qubits (not visible to the agent)
+        self.hidden_state_qubit_values = np.zeros((2, 2*self.size*self.size))  # make hidden state that contains the information about the initially flipped qubits (not visible to the agent)
         self.op_values = np.zeros((2, self.size*self.size))
 
         self.syndrome_pos = [] # Location of syndromes
@@ -632,7 +573,7 @@ class Board(object):
     def has_no_syndromes(self):
 
         # Are all syndromes removed?
-        return len(self.syndrome_pos) == 0 #False if it has syndromes, True if there are no syndromes
+        return len(self.syndrome_pos) == 0 # False if it has syndromes, True if there are no syndromes
 
 
 
@@ -680,7 +621,7 @@ class Board(object):
 
     def image_view(self, number=False, channel=0):
         image = np.empty((2*self.size, 2*self.size), dtype=object)
-        #print(image)
+        # print(image)
         for i, plaq in enumerate(self.plaquet_pos):
             if self.op_values[0][i] == 1:
                 image[plaq[0], plaq[1]] = "P"+str(i) if number else "P"

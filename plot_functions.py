@@ -2,15 +2,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3.common.results_plotter import load_results, ts2xy
-import pandas as pd
-import seaborn as sns
 
-def plot_benchmark_MWPM(success_rates_all, success_rates_all_MWPM,N_evaluates, error_rates_eval, board_size,path_plot,agent_value_N, agent_value_error_rate,evaluate_fixed):
-    plt.figure(figsize=(6,4))
-    #for j in range(success_rates.shape[0]):
+def plot_benchmark_MWPM(success_rates_all, success_rates_all_MWPM,N_evaluates, error_rates_eval, board_size,path_plot,evaluate_fixed):
+
+    plt.figure(figsize = (6,4))
     if evaluate_fixed:
         plt.plot(N_evaluates, success_rates_all_MWPM[-1,:], label=f'd={board_size} MWPM decoder', linestyle='-.', linewidth=0.5, color='black')
-        plt.scatter(N_evaluates, success_rates_all[-1,:], label=f"d={board_size} PPO agent, N={agent_value_N}", marker="^", s=30)
+        plt.scatter(N_evaluates, success_rates_all[-1,:], label=f"d={board_size} PPO agent", marker="^", s=30)
         plt.plot(N_evaluates, success_rates_all[-1,:], linestyle='-.', linewidth=0.5)
         plt.xlabel(r'N')
     else:
@@ -20,7 +18,7 @@ def plot_benchmark_MWPM(success_rates_all, success_rates_all_MWPM,N_evaluates, e
         plt.xlabel(r'$p$')
         plt.xlim((0,error_rates_eval[-1]+0.005))
 
-    #plt.title(r'Toric Code - PPO vs MWPM')
+
     plt.ylabel(r'$p_s$')
     plt.legend()
     plt.grid()
@@ -66,8 +64,8 @@ def plot_log_results(log_folder,  save_model_path, title="Average training rewar
     """
     x, y = ts2xy(load_results(log_folder), "timesteps")
 
-    y = moving_average(y, window=50) #geen  oving average maar averagen over n_steps
-    #y = calculate_rolling(y, window=1000)
+    y = moving_average(y, window=50)
+
     # Truncate x
     x = x[len(x) - len(y) :]
 
@@ -79,90 +77,8 @@ def plot_log_results(log_folder,  save_model_path, title="Average training rewar
     plt.xlabel("Number of training timesteps")
     plt.ylabel("Reward")
     plt.grid()
-    #plt.title(title + " Smoothed")
     plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/learning_curve_{save_model_path}.pdf')
 
-
-def plot_log_results_2(log_dirs, save_model_path, title="Multi Average training reward"):
-
-    reward_schemes=['64x64','64x64x64','20x20x20']
-    fig = plt.figure(title, figsize=(6,4))
-
-    for log_folder in log_dirs:
-        i = log_dirs.index(log_folder)
-        x, y = ts2xy(load_results(log_folder), "episodes")
-        x=x[:12500]
-
-        y=y[:12500]
-        y, y_error = calculate_rolling(y, window=100)
-
-
-
-        plt.plot(x, y, linewidth=0.9, label=f"{reward_schemes[i]}", alpha=1)
-        plt.fill_between(x, y-y_error, y+y_error, alpha = 0.4)
-
-
-
-
-    plt.yscale("linear")
-    plt.xlabel("Number of training episodes")
-    #plt.xlabel("Number of training timesteps")
-    plt.ylabel("Reward")
-    plt.grid()
-    plt.legend(loc='lower right',prop={'size': 10})
-    plt.show()
-    plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/ablation_study_learning_curve_{save_model_path}.pdf')
-
-def plot_log_results_files(file1, file2, file3, file4,timesteps, save_model_path, title="Multi Average training reward"):
-
-    fig = plt.figure(title, figsize=(7,6))
-
-    plt.plot(np.arange(0,len(file1)), file1, label=r"lr=0.0001", linewidth=0.95)
-    plt.plot(np.arange(0,len(file2)), file2, label=r"lr=0.001", linewidth=0.95)
-    plt.plot(np.arange(0,len(file3)), file3, label=r"lr=0.01", linewidth=0.95)
-    plt.plot(np.arange(0,len(file4)), file4, label=r"lr annealing", linewidth=0.95)
-
-
-    plt.yscale("log")
-    plt.xlabel("Number of training iterations", fontsize=16)
-    plt.xticks(fontsize = 14)
-    plt.yticks(fontsize = 14)
-    plt.xlim(0,40000)
-    #plt.xlabel("Number of training timesteps")
-    plt.ylabel("Reward", fontsize=16)
-    plt.grid()
-    plt.legend(loc='lower right',prop={'size': 15})
-    #plt.title(title + " Smoothed")
-
-    plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/ablation_study_learning_curve_{save_model_path}.pdf')
-
-
-def plot_log_results_1(file1,timesteps, save_model_path, title="Multi Average training reward"):
-    """
-    plot the results for multiple learning curves of the same training settings.
-
-    :param log_folder: (str) the save location of the results to plot
-    :param title: (str) the title of the task to plot
-    
-    """
-
-
-    fig = plt.figure(title, figsize=(7.5,6))
-
-    plt.plot(timesteps, file1, linewidth=0.95, color='blue')
-
-
-    plt.yscale("linear")
-    plt.xlabel("Number of training timesteps", fontsize=16)
-    plt.xticks(fontsize = 14)
-    plt.yticks(fontsize = 14)
-    #plt.xlabel("Number of training timesteps")
-    plt.ylabel("Reward", fontsize=16)
-    plt.grid()
-    #plt.legend(loc='lower right',prop={'size': 15})
-    #plt.title(title + " Smoothed")
-
-    plt.savefig(f'/Users/lindsayspoor/Library/Mobile Documents/com~apple~CloudDocs/Documents/Studiedocumenten/2023-2024/MSc Research Project/Results/Figure_results/Results_reward_logs/learning_curve_{save_model_path}.pdf')
 
 
 def render_evaluation(obs0_k,evaluation_settings, actions_k, initial_flips_k):
@@ -274,131 +190,6 @@ def render_evaluation(obs0_k,evaluation_settings, actions_k, initial_flips_k):
         plt.show()
 
 
-def plot_benchmark_MWPM_2(path_plot,success_rates_all_3, success_rates_all_MWPM_3, success_rates_all_5, success_rates_all_MWPM_5, success_rates_all_7, success_rates_all_MWPM_7,success_rates_all_MWPM_15,error_rates_eval):
-    
-
-    plt.figure(figsize=(7,6))
-    #for j in range(success_rates.shape[0]):
-    plt.grid()
-    plt.plot(error_rates_eval, success_rates_all_MWPM_3, label=f'd=3 MWPM', linestyle='-.',linewidth=1.1, color='blue')
-    plt.scatter(error_rates_eval, success_rates_all_3, label=f"d=3 PPO agent", marker="^", s=45, color = 'blue', edgecolors='black',zorder=10)
-    plt.plot(error_rates_eval, success_rates_all_MWPM_5, label=f'd=5 MWPM', linestyle=':',linewidth=1.5, color='darkorange')
-    plt.scatter(error_rates_eval, success_rates_all_5, label=f"d=5 PPO agent", marker="o", s=45, color = 'darkorange', edgecolors='black',zorder=11)
-    plt.plot(error_rates_eval, success_rates_all_MWPM_7, label=f'd=7 MWPM', linestyle='--',linewidth=1.1, color='green')
-    plt.scatter(error_rates_eval, success_rates_all_7, label=f"d=7 PPO agent", marker="s", s=35, color = 'green', edgecolors='black', zorder=12)
-    plt.plot(error_rates_eval, success_rates_all_MWPM_15, label=f'd=15 MWPM', linestyle='--',linewidth=0.7, color='purple')
-    #plt.plot(error_rates_eval, success_rates_all_MWPM_30, label=f'd=30 MWPM', linestyle='--',linewidth=0.7, color='black')
-    plt.xlabel(r'$p_{error}$', fontsize=16)
-    plt.xlim((0.005,error_rates_eval[-1]+0.005))
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'$p_s$', fontsize=16)
-    plt.legend(prop={'size': 15})
-    plt.savefig(path_plot)
-    plt.show()
-
-def plot_fixed_vs_curr(path_plot,success_rates_all_5, success_rates_all_MWPM_5,success_rates_curr,error_rates_eval):
-    
-
-    plt.figure(figsize=(7,6))
-    #for j in range(success_rates.shape[0]):
-    plt.grid()
-    plt.plot(error_rates_eval, success_rates_all_MWPM_5, label=f'd=5 MWPM', linestyle='-.',linewidth=1.1, color='black')
-    #plt.plot(error_rates_eval, success_rates_all_5, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_all_5, label=r'd=5 PPO, $p_{error}=0.1$', marker='s', s=45, color='blue',edgecolors='black', zorder=5)
-    #plt.plot(error_rates_eval, success_rates_curr, linestyle='-',linewidth=1.3, color = 'orange')
-    #plt.scatter(error_rates_eval, success_rates_curr, label=f"d=5 PPO, curriculum learning", marker="o", s=45, color = 'orange', edgecolors='black',zorder=6)
-    plt.xlabel(r'$p_{error}$', fontsize=16)
-    plt.xlim((0.005,error_rates_eval[-1]+0.005))
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'$p_s$', fontsize=16)
-    plt.legend(prop={'size': 15})
-    plt.savefig(path_plot)
-    plt.show()
-
-def plot_different_timesteps(path_plot,success_rates_all_MWPM_5, success_rates_err_64_64,success_rates_err_64_64_64,success_rates_err_20_20_20,error_rates_eval):#  success_rates_err4, success_rates_err5, success_rates_err6,error_rates_eval):
-    
-
-    plt.figure(figsize=(7,6))
-    #for j in range(success_rates.shape[0]):
-    plt.grid()
-    plt.plot(error_rates_eval, success_rates_all_MWPM_5, label=f'd=5 MWPM', linestyle='-.',linewidth=1.1, color='black')
-    plt.plot(error_rates_eval, success_rates_err_64_64, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_err_64_64, label=r'd=5 PPO, $64x64$', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_err_64_64_64, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_err_64_64_64, label=r'd=5 PPO, $64x64x64$', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_err_20_20_20, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_err_20_20_20, label=r'd=5 PPO, $20x20x20$', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_all_5, linestyle='-',linewidth=1.3, color = 'fuchsia')
-    #plt.scatter(error_rates_eval, success_rates_all_5, label=f"d=5 PPO, curriculum learning", marker="o", s=40, color = 'fuchsia', edgecolors='black',zorder=6)
-    plt.xlabel(r'$p_{error}$', fontsize=16)
-    plt.xlim((0.005,error_rates_eval[-1]+0.005))
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'$p_s$', fontsize = 16)
-    plt.legend(prop={'size': 15})
-    plt.savefig(path_plot)
-    plt.show()
-
-def plot_different_lr(path_plot, success_rates_all_MWPM_5, success_rates_lr0001,success_rates_lr001,success_rates_lr01,error_rates_eval):#  success_rates_err4, success_rates_err5, success_rates_err6,error_rates_eval):
-    
-
-    plt.figure(figsize=(7,6))
-    #for j in range(success_rates.shape[0]):
-    plt.grid()
-    plt.plot(error_rates_eval, success_rates_all_MWPM_5, label=f'd=5 MWPM', linestyle='-.',linewidth=1.1, color='black')
-    plt.plot(error_rates_eval, success_rates_lr0001, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_lr0001, label=r'lr=0.0001', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_lr001, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_lr001, label=r'lr.0.001', marker='s', s=15)
-    plt.plot(error_rates_eval, success_rates_lr01, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, success_rates_lr01, label=r'lr=0.01', marker='s', s=15)
-    #plt.plot(error_rates_eval, success_rates_all_5, linestyle='-',linewidth=1.3, color = 'fuchsia')
-    #plt.scatter(error_rates_eval, success_rates_all_5, label=f"d=5 PPO, curriculum learning", marker="o", s=40, color = 'fuchsia', edgecolors='black',zorder=6)
-    plt.xlabel(r'$p_{error}$',fontsize=16)
-    plt.xlim((0.005,error_rates_eval[-1]+0.005))
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel(r'$p_s$', fontsize=16)
-    plt.legend(prop={'size': 15})
-    plt.savefig(path_plot)
-    plt.show()
-
-
-def plot_mean_moves(path_plot, error_rates_eval, mean_moves1,mean_moves2,mean_moves3,mean_moves4,mean_moves5,mean_moves6,mean_moves_curr):
-
-    plt.figure(figsize=(7,6))
-
-    plt.grid()
-    #plt.scatter(error_rates_eval, mean_moves1, label=r'd=5 PPO, $p_{error}=0.1$', marker='s', s=15)
-    #plt.plot(error_rates_eval, mean_moves1, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, mean_moves2, label=r'd=5 PPO, lr=0.0001', marker='s', s=15)
-    plt.plot(error_rates_eval, mean_moves2, linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, mean_moves3, label=r'd=5 PPO, lr=0.001', marker='s', s=15)
-    plt.plot(error_rates_eval, mean_moves3,  linestyle='-',linewidth=1.1)
-    plt.scatter(error_rates_eval, mean_moves4, label=r'd=5 PPO, lr=0.01', marker='s', s=15)
-    plt.plot(error_rates_eval, mean_moves4, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, mean_moves5, label=r'd=5 PPO, $p_{error}=0.129$', marker='s', s=15)
-    #plt.plot(error_rates_eval, mean_moves5, linestyle='-',linewidth=1.1)
-    #plt.scatter(error_rates_eval, mean_moves6, label=r'd=5 PPO, $p_{error}=0.15$', marker='s', s=15)
-    #plt.plot(error_rates_eval, mean_moves6, linestyle='-',linewidth=1.1)
-    #plt.plot(error_rates_eval, mean_moves_curr, linestyle='-',linewidth=1.3, color = 'fuchsia')
-    #plt.scatter(error_rates_eval, mean_moves_curr, label=f"d=5 PPO, curriculum learning", marker="o", s=40, color = 'fuchsia', edgecolors='black',zorder=6)
-    plt.xlabel(r'$p_{error}$', fontsize=16)
-    plt.xlim((0.005,error_rates_eval[-1]+0.005))
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    #plt.title(r'Toric Code - PPO vs MWPM')
-    plt.ylabel("Mean number of moves per game", fontsize=16)
-    plt.legend(prop={'size': 15})
-    plt.savefig(path_plot)
-    plt.show()
-
 
 def plot_single_box_dynamic(path_plot, rewards_agent):
 
@@ -412,18 +203,3 @@ def plot_single_box_dynamic(path_plot, rewards_agent):
     plt.savefig(path_plot)
     plt.show()
 
-
-def plot_multiple_boxes_dynamic(path_plot, moves_agent1, moves_agent2, moves_agent3, moves_agent4, moves_agent5):
-
-    labels = ['Random', r'$(N,N_{new},k)$''\n =(1,1,2)', r'$(N,N_{new},k)$''\n =(1,1,3)',r'$(N,N_{new},k)$''\n =(2,2,3)', r'$(N,N_{new},k)$''\n =(2,2,4)']
-    moves_all=[moves_agent1,moves_agent2, moves_agent3, moves_agent4, moves_agent5]
-
-    plt.figure(figsize=(15,8))
-    plt.grid(axis='y',alpha=0.5)
-
-    plt.boxplot(moves_all, labels=labels)
-    plt.ylabel("Score", fontsize=16)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=14)
-    plt.savefig(path_plot)
-    plt.show()

@@ -14,7 +14,7 @@ from stable_baselines3.common.results_plotter import load_results, ts2xy
 from stable_baselines3.common.policies import obs_as_tensor
 import networkx as nx
 from tqdm import tqdm
-from plot_functions import plot_benchmark_MWPM, plot_log_results, render_evaluation
+from plot_functions_old import plot_benchmark_MWPM, plot_log_results, render_evaluation
 from MWPM_decoder import decode_MWPM_method, decode_MWPM_pymatching
 
 os.getcwd()

@@ -1,9 +1,7 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from plot_functions import moving_average, calculate_rolling
 from stable_baselines3.common.results_plotter import load_results, ts2xy
-import seaborn as sns
-from plot_functions import plot_log_results, plot_log_results_1, plot_log_results_2, plot_log_results_files
+from plot_functions_old import plot_log_results, plot_log_results_1, plot_log_results_2, plot_log_results_files
 
 
 

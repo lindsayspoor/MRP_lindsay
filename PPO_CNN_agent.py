@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
-from toric_game_env_cnn import ToricGameEnvCNN, ToricGameEnvFixedErrsCNN
+from toric_game_static_env_cnn import ToricGameEnvCNN, ToricGameEnvFixedErrsCNN
 from stable_baselines3.ppo.policies import CnnPolicy
 from sb3_contrib.common.maskable.policies import MaskableActorCriticCnnPolicy
 import os
@@ -11,11 +11,8 @@ from custom_callback import SaveOnBestTrainingRewardCallback
 from stable_baselines3.common.env_checker import check_env
 from sb3_contrib.common.maskable.utils import get_action_masks
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.results_plotter import load_results, ts2xy
-from stable_baselines3.common.policies import obs_as_tensor
-import networkx as nx
 from tqdm import tqdm
-from plot_functions import plot_benchmark_MWPM, plot_log_results, render_evaluation
+from plot_functions_old import plot_benchmark_MWPM, plot_log_results, render_evaluation
 from MWPM_decoder import decode_MWPM_method
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch as th
